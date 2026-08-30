@@ -1,4 +1,3 @@
-```python
 import hashlib
 from datetime import date, datetime
 import pandas as pd
@@ -1948,4 +1947,4 @@ else:
                     use_container_width=True,
                     hide_index=True
                 )
-```
+
