@@ -1,17 +1,14 @@
 ```python
 import hashlib
 from datetime import date, datetime
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from sqlalchemy import text
 
-
-# =============================================================
-# 1. PAGE CONFIG & PREMIUM ENCORE HEALTHCARE STYLING
-# =============================================================
-
+# -------------------------------------------------------------
+# 1. Page Config & Premium Encore Healthcare Styling
+# -------------------------------------------------------------
 st.set_page_config(
     page_title="Encore QC Analytics",
     page_icon="🧬",
@@ -20,248 +17,212 @@ st.set_page_config(
 )
 
 # Official Encore Healthcare Logo
-ENCORE_LOGO_URL = (
-    "https://encorehealthcare.in/wp-content/uploads/2023/12/"
-    "encore-healthcare_transparent-1536x618.png"
-)
+ENCORE_LOGO_URL = "https://encorehealthcare.in/wp-content/uploads/2023/12/encore-healthcare_transparent-1536x618.png"
 
-
-st.markdown(
-    """
+st.markdown(f"""
 <style>
 
-/* ============================================================
-   GLOBAL APPLICATION
-   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-@import url(
-'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'
-);
+/* =========================================================
+   GLOBAL
+   ========================================================= */
 
-html,
-body,
-[class*="css"] {
+html, body, [class*="css"] {{
     font-family: 'Plus Jakarta Sans', sans-serif;
-}
+}}
 
-.stApp {
+.stApp {{
     background:
         radial-gradient(
-            circle at 8% 5%,
-            rgba(67, 24, 255, 0.035),
-            transparent 28%
+            circle at 5% 0%,
+            rgba(67,24,255,0.035),
+            transparent 25%
         ),
         radial-gradient(
-            circle at 92% 12%,
-            rgba(5, 205, 153, 0.035),
-            transparent 28%
+            circle at 95% 10%,
+            rgba(5,205,153,0.035),
+            transparent 25%
         ),
         #F7F9FC;
-}
+}}
 
-/* Hide Streamlit branding */
-
-#MainMenu {
+#MainMenu {{
     visibility: hidden;
-}
+}}
 
-footer {
+footer {{
     visibility: hidden;
-}
+}}
 
-header {
+header {{
     visibility: hidden;
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    SIDEBAR
-   ============================================================ */
+   ========================================================= */
 
-section[data-testid="stSidebar"] {
+section[data-testid="stSidebar"] {{
     background:
         linear-gradient(
             180deg,
-            #06142E 0%,
-            #0B1C3E 48%,
-            #102C55 100%
+            #06142D 0%,
+            #0B1C3E 50%,
+            #102C54 100%
         );
 
     border-right: 1px solid rgba(255,255,255,0.08);
-}
+}}
 
-section[data-testid="stSidebar"] * {
+section[data-testid="stSidebar"] * {{
     color: #E2E8F0;
-}
+}}
 
-section[data-testid="stSidebar"] img {
-    padding: 10px 8px 18px 8px;
-}
+section[data-testid="stSidebar"] img {{
+    padding: 12px 8px 18px 8px;
+}}
 
-section[data-testid="stSidebar"] hr {
+section[data-testid="stSidebar"] hr {{
     border-color: rgba(255,255,255,0.10);
-}
+}}
 
-section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-    color: #CBD5E1;
-}
-
-section[data-testid="stSidebar"] button {
+section[data-testid="stSidebar"] button {{
     border-radius: 10px;
-
     border: 1px solid rgba(255,255,255,0.10);
-
     background: rgba(255,255,255,0.055);
+    transition: all 0.25s ease;
+}}
 
-    transition:
-        all 0.25s ease;
-}
-
-section[data-testid="stSidebar"] button:hover {
+section[data-testid="stSidebar"] button:hover {{
     background: rgba(255,255,255,0.12);
-
-    transform: translateY(-1px);
-
     border-color: rgba(255,255,255,0.18);
-}
+    transform: translateY(-1px);
+}}
 
 
-/* ============================================================
-   PREMIUM DASHBOARD HEADER
-   ============================================================ */
+/* =========================================================
+   DASHBOARD HEADER
+   ========================================================= */
 
-.top-header {
+.top-header {{
     position: relative;
-
     overflow: hidden;
 
     background:
         radial-gradient(
-            circle at 85% 15%,
-            rgba(67,24,255,0.32),
-            transparent 28%
+            circle at 90% 20%,
+            rgba(67,24,255,0.30),
+            transparent 27%
         ),
         radial-gradient(
-            circle at 15% 110%,
+            circle at 10% 100%,
             rgba(5,205,153,0.13),
             transparent 30%
         ),
         linear-gradient(
             135deg,
-            #06142E 0%,
+            #06142D 0%,
             #0B1C3E 48%,
-            #173967 100%
+            #183A69 100%
         );
 
-    padding: 26px 32px;
-
+    padding: 24px 30px;
     border-radius: 18px;
 
     color: white;
-
-    margin-bottom: 30px;
+    margin-bottom: 28px;
 
     display: flex;
-
     align-items: center;
 
     box-shadow:
-        0 16px 42px rgba(11,28,62,0.18),
+        0 15px 40px rgba(11,28,62,0.18),
         inset 0 1px 0 rgba(255,255,255,0.07);
 
-    animation:
-        headerEnter 0.65s ease-out;
-}
+    animation: headerEnter 0.65s ease-out;
+}}
 
-.top-header::before {
-    content: "";
+.top-header::before {{
+    content: '';
 
     position: absolute;
 
-    width: 240px;
-    height: 240px;
+    width: 220px;
+    height: 220px;
 
     right: -70px;
-    top: -125px;
+    top: -110px;
 
     border-radius: 50%;
 
     background: rgba(255,255,255,0.035);
 
-    animation:
-        floatingOrb 8s ease-in-out infinite;
-}
+    animation: floatingOrb 8s ease-in-out infinite;
+}}
 
-.top-header::after {
-    content: "";
+.top-header::after {{
+    content: '';
 
     position: absolute;
 
-    width: 150px;
-    height: 150px;
+    width: 130px;
+    height: 130px;
 
-    right: 190px;
-    bottom: -105px;
+    right: 180px;
+    bottom: -90px;
 
     border-radius: 50%;
 
-    background: rgba(67,24,255,0.09);
+    background: rgba(67,24,255,0.10);
 
-    animation:
-        floatingOrb 10s ease-in-out infinite reverse;
-}
+    animation: floatingOrb 10s ease-in-out infinite reverse;
+}}
 
-.top-header img {
-    height: 58px;
-
+.top-header img {{
+    height: 56px;
     width: auto;
 
-    margin-right: 24px;
+    margin-right: 22px;
 
     position: relative;
-
     z-index: 2;
 
-    animation:
-        logoFloat 4s ease-in-out infinite;
-}
+    animation: logoFloat 4s ease-in-out infinite;
+}}
 
-.top-header h1 {
+.top-header h1 {{
     margin: 0;
 
-    font-size: 2.15rem;
-
+    font-size: 2.1rem;
     font-weight: 800;
 
-    letter-spacing: -0.5px;
+    letter-spacing: -0.6px;
 
     position: relative;
-
     z-index: 2;
-}
+}}
 
-.top-header p {
+.top-header p {{
     margin: 6px 0 0 0;
 
     color: #A8B7CC;
 
     font-weight: 500;
-
-    font-size: 0.92rem;
+    font-size: 0.90rem;
 
     position: relative;
-
     z-index: 2;
-}
+}}
 
 
-/* ============================================================
-   KPI / METRIC CARDS
-   ============================================================ */
+/* =========================================================
+   KPI CARDS
+   ========================================================= */
 
-.trendy-card {
+.trendy-card {{
     position: relative;
-
     overflow: hidden;
 
     background:
@@ -271,9 +232,9 @@ section[data-testid="stSidebar"] button:hover {
             #FBFCFF 100%
         );
 
-    border-radius: 17px;
+    border-radius: 16px;
 
-    padding: 23px 21px;
+    padding: 22px 20px;
 
     text-align: left;
 
@@ -284,31 +245,30 @@ section[data-testid="stSidebar"] button:hover {
     border-left: 5px solid #4318FF;
 
     transition:
-        transform 0.3s ease,
-        box-shadow 0.3s ease;
+        transform 0.30s ease,
+        box-shadow 0.30s ease;
 
-    animation:
-        cardEnter 0.55s ease-out both;
-}
+    animation: cardEnter 0.55s ease-out both;
+}}
 
-.trendy-card:hover {
+.trendy-card:hover {{
     transform: translateY(-5px);
 
     box-shadow:
         0 18px 38px rgba(15,23,42,0.11),
         0 5px 12px rgba(15,23,42,0.04);
-}
+}}
 
-.trendy-card::after {
-    content: "";
+.trendy-card::after {{
+    content: '';
 
     position: absolute;
 
-    width: 110px;
-    height: 110px;
+    width: 105px;
+    height: 105px;
 
-    right: -40px;
-    top: -40px;
+    right: -38px;
+    top: -38px;
 
     border-radius: 50%;
 
@@ -319,27 +279,26 @@ section[data-testid="stSidebar"] button:hover {
             rgba(67,24,255,0.10)
         );
 
-    transition:
-        transform 0.5s ease;
-}
+    transition: transform 0.5s ease;
+}}
 
-.trendy-card:hover::after {
+.trendy-card:hover::after {{
     transform: scale(1.35);
-}
+}}
 
-.metric-value {
+.metric-value {{
     font-size: 2.35rem;
 
     font-weight: 800;
 
     color: #1E293B;
 
-    margin: 7px 0 0 0;
+    margin: 8px 0 0 0;
 
     letter-spacing: -1px;
-}
+}}
 
-.metric-label {
+.metric-label {{
     color: #64748B;
 
     font-size: 0.76rem;
@@ -348,28 +307,28 @@ section[data-testid="stSidebar"] button:hover {
 
     text-transform: uppercase;
 
-    letter-spacing: 1.15px;
-}
+    letter-spacing: 1.1px;
+}}
 
 
-/* ============================================================
+/* =========================================================
    TABS
-   ============================================================ */
+   ========================================================= */
 
-.stTabs [data-baseweb="tab-list"] {
+.stTabs [data-baseweb="tab-list"] {{
     gap: 6px;
 
     border-bottom: 1px solid #E2E8F0;
 
     padding-bottom: 0;
-}
+}}
 
-.stTabs [data-baseweb="tab"] {
+.stTabs [data-baseweb="tab"] {{
     background: transparent;
 
     border: none;
 
-    padding: 13px 20px;
+    padding: 13px 19px;
 
     color: #64748B;
 
@@ -379,17 +338,17 @@ section[data-testid="stSidebar"] button:hover {
         color 0.2s ease,
         background 0.2s ease,
         transform 0.2s ease;
-}
+}}
 
-.stTabs [data-baseweb="tab"]:hover {
+.stTabs [data-baseweb="tab"]:hover {{
     color: #0B1C3E;
 
     background: rgba(67,24,255,0.035);
 
     transform: translateY(-1px);
-}
+}}
 
-.stTabs [aria-selected="true"] {
+.stTabs [aria-selected="true"] {{
     color: #0B1C3E !important;
 
     border-bottom: 3px solid #4318FF;
@@ -400,40 +359,39 @@ section[data-testid="stSidebar"] button:hover {
 
     box-shadow:
         0 -2px 10px rgba(15,23,42,0.025);
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    INPUTS
-   ============================================================ */
+   ========================================================= */
 
 div[data-baseweb="input"],
-div[data-baseweb="select"] {
+div[data-baseweb="select"] {{
     border-radius: 10px;
-}
+}}
 
-input {
+input {{
     border-radius: 10px !important;
-}
+}}
 
-textarea {
+textarea {{
     border-radius: 10px !important;
-}
+}}
 
-div[data-baseweb="input"]:focus-within,
-div[data-baseweb="select"]:focus-within {
+div[data-baseweb="input"]:focus-within {{
     border-color: #4318FF !important;
 
     box-shadow:
         0 0 0 1px rgba(67,24,255,0.15) !important;
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    PRIMARY BUTTONS
-   ============================================================ */
+   ========================================================= */
 
-button[kind="primary"] {
+button[kind="primary"] {{
     border-radius: 10px !important;
 
     font-weight: 700 !important;
@@ -441,21 +399,21 @@ button[kind="primary"] {
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease !important;
-}
+}}
 
-button[kind="primary"]:hover {
+button[kind="primary"]:hover {{
     transform: translateY(-2px);
 
     box-shadow:
         0 9px 22px rgba(67,24,255,0.22) !important;
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    FORMS
-   ============================================================ */
+   ========================================================= */
 
-[data-testid="stForm"] {
+[data-testid="stForm"] {{
     background:
         linear-gradient(
             145deg,
@@ -471,14 +429,14 @@ button[kind="primary"]:hover {
 
     box-shadow:
         0 5px 20px rgba(15,23,42,0.045);
-}
+}}
 
 
-/* ============================================================
-   DATAFRAMES / TABLES
-   ============================================================ */
+/* =========================================================
+   DATAFRAME
+   ========================================================= */
 
-[data-testid="stDataFrame"] {
+[data-testid="stDataFrame"] {{
     border-radius: 14px;
 
     overflow: hidden;
@@ -487,20 +445,19 @@ button[kind="primary"]:hover {
 
     box-shadow:
         0 5px 20px rgba(15,23,42,0.045);
-}
+}}
 
 
-/* ============================================================
-   LOGIN BACKGROUND
-   ============================================================ */
+/* =========================================================
+   LOGIN SCREEN
+   ========================================================= */
 
-.login-background {
+.login-background {{
     position: fixed;
 
     inset: 0;
 
     width: 100vw;
-
     height: 100vh;
 
     overflow: hidden;
@@ -524,27 +481,25 @@ button[kind="primary"]:hover {
         );
 
     z-index: -1;
-}
+}}
 
 
-/* ============================================================
-   LOGIN ORBS
-   ============================================================ */
+/* =========================================================
+   LOGIN ANIMATED ORBS
+   ========================================================= */
 
-.login-orb {
+.login-orb {{
     position: absolute;
 
     border-radius: 50%;
-
-    filter: blur(1px);
 
     opacity: 0.45;
 
     animation:
         loginOrbFloat 10s ease-in-out infinite;
-}
+}}
 
-.orb-one {
+.orb-one {{
     width: 280px;
     height: 280px;
 
@@ -552,9 +507,9 @@ button[kind="primary"]:hover {
 
     top: 6%;
     left: 7%;
-}
+}}
 
-.orb-two {
+.orb-two {{
     width: 210px;
     height: 210px;
 
@@ -564,9 +519,9 @@ button[kind="primary"]:hover {
     right: 10%;
 
     animation-delay: -3s;
-}
+}}
 
-.orb-three {
+.orb-three {{
     width: 130px;
     height: 130px;
 
@@ -576,14 +531,14 @@ button[kind="primary"]:hover {
     left: 22%;
 
     animation-delay: -6s;
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    LOGIN CARD
-   ============================================================ */
+   ========================================================= */
 
-.login-card {
+.login-card {{
     background:
         linear-gradient(
             145deg,
@@ -595,7 +550,7 @@ button[kind="primary"]:hover {
 
     border-radius: 24px;
 
-    padding: 35px 38px 20px 38px;
+    padding: 34px 38px 20px 38px;
 
     box-shadow:
         0 30px 80px rgba(0,0,0,0.25),
@@ -605,31 +560,31 @@ button[kind="primary"]:hover {
 
     animation:
         loginCardEnter 0.8s cubic-bezier(.2,.8,.2,1);
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    LOGIN LOGO
-   ============================================================ */
+   ========================================================= */
 
-.login-logo {
+.login-logo {{
     width: 180px;
 
     display: block;
 
-    margin: 0 auto 17px auto;
+    margin: 0 auto 16px auto;
 
     animation:
         loginLogoEnter 0.9s ease-out,
         loginLogoFloat 4s ease-in-out 1s infinite;
-}
+}}
 
 
-/* ============================================================
-   LOGIN TITLE
-   ============================================================ */
+/* =========================================================
+   LOGIN TEXT
+   ========================================================= */
 
-.login-title {
+.login-title {{
     text-align: center;
 
     color: #0B1C3E;
@@ -639,9 +594,9 @@ button[kind="primary"]:hover {
     font-weight: 800;
 
     margin-bottom: 4px;
-}
+}}
 
-.login-subtitle {
+.login-subtitle {{
     text-align: center;
 
     color: #64748B;
@@ -650,15 +605,15 @@ button[kind="primary"]:hover {
 
     font-weight: 600;
 
-    margin-bottom: 24px;
-}
+    margin-bottom: 23px;
+}}
 
 
-/* ============================================================
+/* =========================================================
    LOGIN ACCENT
-   ============================================================ */
+   ========================================================= */
 
-.login-accent {
+.login-accent {{
     height: 4px;
 
     width: 52px;
@@ -676,14 +631,14 @@ button[kind="primary"]:hover {
 
     animation:
         accentGrow 0.8s ease-out;
-}
+}}
 
 
-/* ============================================================
+/* =========================================================
    LOGIN FOOTER
-   ============================================================ */
+   ========================================================= */
 
-.login-footer {
+.login-footer {{
     text-align: center;
 
     margin-top: 20px;
@@ -695,225 +650,186 @@ button[kind="primary"]:hover {
     font-weight: 600;
 
     line-height: 1.6;
-}
+}}
 
 
-/* ============================================================
-   SECTION HEADINGS
-   ============================================================ */
-
-h1,
-h2,
-h3 {
-    color: #0B1C3E;
-}
-
-h3 {
-    font-weight: 800;
-}
-
-
-/* ============================================================
+/* =========================================================
    ANIMATIONS
-   ============================================================ */
+   ========================================================= */
 
-@keyframes loginCardEnter {
+@keyframes loginCardEnter {{
 
-    from {
+    from {{
         opacity: 0;
 
         transform:
             translateY(35px)
             scale(0.97);
-    }
+    }}
 
-    to {
+    to {{
         opacity: 1;
 
         transform:
             translateY(0)
             scale(1);
-    }
-}
+    }}
+}}
 
+@keyframes loginLogoEnter {{
 
-@keyframes loginLogoEnter {
-
-    from {
+    from {{
         opacity: 0;
 
         transform:
             translateY(-18px)
             scale(0.88);
-    }
+    }}
 
-    to {
+    to {{
         opacity: 1;
 
         transform:
             translateY(0)
             scale(1);
-    }
-}
+    }}
+}}
 
+@keyframes loginLogoFloat {{
 
-@keyframes loginLogoFloat {
-
-    0%,
-    100% {
+    0%, 100% {{
         transform: translateY(0);
-    }
+    }}
 
-    50% {
+    50% {{
         transform: translateY(-5px);
-    }
-}
+    }}
+}}
 
+@keyframes loginOrbFloat {{
 
-@keyframes loginOrbFloat {
-
-    0%,
-    100% {
+    0%, 100% {{
         transform:
             translate(0,0)
             scale(1);
-    }
+    }}
 
-    50% {
+    50% {{
         transform:
             translate(25px,-20px)
             scale(1.08);
-    }
-}
+    }}
+}}
 
+@keyframes headerEnter {{
 
-@keyframes headerEnter {
-
-    from {
+    from {{
         opacity: 0;
-
         transform: translateY(-15px);
-    }
+    }}
 
-    to {
+    to {{
         opacity: 1;
-
         transform: translateY(0);
-    }
-}
+    }}
+}}
 
+@keyframes cardEnter {{
 
-@keyframes cardEnter {
-
-    from {
+    from {{
         opacity: 0;
-
         transform: translateY(15px);
-    }
+    }}
 
-    to {
+    to {{
         opacity: 1;
-
         transform: translateY(0);
-    }
-}
+    }}
+}}
 
+@keyframes logoFloat {{
 
-@keyframes logoFloat {
-
-    0%,
-    100% {
+    0%, 100% {{
         transform: translateY(0);
-    }
+    }}
 
-    50% {
+    50% {{
         transform: translateY(-3px);
-    }
-}
+    }}
+}}
 
+@keyframes floatingOrb {{
 
-@keyframes floatingOrb {
+    0%, 100% {{
+        transform: translate(0,0);
+    }}
 
-    0%,
-    100% {
-        transform:
-            translate(0,0);
-    }
+    50% {{
+        transform: translate(-18px,15px);
+    }}
+}}
 
-    50% {
-        transform:
-            translate(-18px,15px);
-    }
-}
+@keyframes accentGrow {{
 
-
-@keyframes accentGrow {
-
-    from {
+    from {{
         width: 0;
-
         opacity: 0;
-    }
+    }}
 
-    to {
+    to {{
         width: 52px;
-
         opacity: 1;
-    }
-}
+    }}
+}}
 
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
-@media (max-width: 768px) {
+@media (max-width: 768px) {{
 
-    .top-header {
+    .top-header {{
         padding: 20px;
-    }
+    }}
 
-    .top-header img {
+    .top-header img {{
         height: 42px;
-
         margin-right: 14px;
-    }
+    }}
 
-    .top-header h1 {
+    .top-header h1 {{
         font-size: 1.35rem;
-    }
+    }}
 
-    .top-header p {
+    .top-header p {{
         font-size: 0.75rem;
-    }
+    }}
 
-    .trendy-card {
+    .trendy-card {{
         padding: 18px;
-    }
+    }}
 
-    .metric-value {
+    .metric-value {{
         font-size: 1.9rem;
-    }
+    }}
 
-    .login-card {
+    .login-card {{
         padding: 28px 22px 18px 22px;
-    }
+    }}
 
-    .login-logo {
+    .login-logo {{
         width: 155px;
-    }
-
-}
+    }}
+}}
 
 </style>
-""",
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
 
-# =============================================================
-# 2. DATABASE CONNECTION & INIT
-# =============================================================
+# -------------------------------------------------------------
+# 2. Database Connection & Init
+# -------------------------------------------------------------
 
 conn = st.connection("postgresql", type="sql")
 
@@ -926,55 +842,43 @@ def init_db():
 
     with conn.session as s:
 
-        s.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS fp_analysis (
-                    id SERIAL PRIMARY KEY,
-                    product_name TEXT,
-                    strength TEXT,
-                    batch_no TEXT UNIQUE,
-                    sample_receipt_date DATE,
-                    analysis_start_date DATE,
-                    analysis_completion_date DATE,
-                    review_completion_date DATE,
-                    coa_completion_date DATE,
-                    target_release_date DATE,
-                    analyst_name TEXT,
-                    status TEXT DEFAULT 'In Progress',
-                    delay_reason TEXT,
-                    actual_testing_hours REAL
-                )
-                """
+        s.execute(text("""
+            CREATE TABLE IF NOT EXISTS fp_analysis (
+                id SERIAL PRIMARY KEY,
+                product_name TEXT,
+                strength TEXT,
+                batch_no TEXT UNIQUE,
+                sample_receipt_date DATE,
+                analysis_start_date DATE,
+                analysis_completion_date DATE,
+                review_completion_date DATE,
+                coa_completion_date DATE,
+                target_release_date DATE,
+                analyst_name TEXT,
+                status TEXT DEFAULT 'In Progress',
+                delay_reason TEXT,
+                actual_testing_hours REAL
             )
-        )
+        """))
 
-        s.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    role TEXT NOT NULL
-                )
-                """
+        s.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL
             )
-        )
+        """))
 
-        s.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS user_logs (
-                    id SERIAL PRIMARY KEY,
-                    username TEXT,
-                    login_time TIMESTAMP,
-                    logout_time TIMESTAMP,
-                    usage_minutes REAL
-                )
-                """
+        s.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_logs (
+                id SERIAL PRIMARY KEY,
+                username TEXT,
+                login_time TIMESTAMP,
+                logout_time TIMESTAMP,
+                usage_minutes REAL
             )
-        )
+        """))
 
         admin_check = s.execute(
             text(
@@ -985,13 +889,11 @@ def init_db():
         if not admin_check:
 
             s.execute(
-                text(
-                    """
+                text("""
                     INSERT INTO users
                     (username, password, role)
                     VALUES (:u, :p, :r)
-                    """
-                ),
+                """),
                 {
                     "u": "admin",
                     "p": hash_password("admin@123"),
@@ -1005,9 +907,9 @@ def init_db():
 init_db()
 
 
-# =============================================================
-# 3. SESSION & AUTHENTICATION
-# =============================================================
+# -------------------------------------------------------------
+# 3. Session & Auth
+# -------------------------------------------------------------
 
 if "logged_in" not in st.session_state:
 
@@ -1032,14 +934,12 @@ def do_logout():
         with conn.session as s:
 
             s.execute(
-                text(
-                    """
+                text("""
                     UPDATE user_logs
                     SET logout_time = :lo,
                         usage_minutes = :um
                     WHERE id = :id
-                    """
-                ),
+                """),
                 {
                     "lo": logout_time,
                     "um": usage_duration,
@@ -1058,13 +958,12 @@ def do_logout():
     st.rerun()
 
 
-# =============================================================
-# 4. PREMIUM LOGIN SCREEN
-# =============================================================
+# -------------------------------------------------------------
+# 4. Login Screen
+# -------------------------------------------------------------
 
 if not st.session_state.logged_in:
 
-    # Animated background
     st.markdown(
         """
         <div class="login-background">
@@ -1086,7 +985,7 @@ if not st.session_state.logged_in:
     )
 
     col1, col2, col3 = st.columns(
-        [1, 1.05, 1]
+        [1, 1.2, 1]
     )
 
     with col2:
@@ -1105,7 +1004,7 @@ if not st.session_state.logged_in:
                 </div>
 
                 <div class="login-subtitle">
-                    Quality Control Operations Hub
+                    QC Operations Hub
                 </div>
 
                 <div class="login-accent"></div>
@@ -1116,14 +1015,12 @@ if not st.session_state.logged_in:
         )
 
         username_input = st.text_input(
-            "Username",
-            placeholder="Enter your username"
+            "Username"
         )
 
         password_input = st.text_input(
             "Password",
-            type="password",
-            placeholder="Enter your password"
+            type="password"
         )
 
         if st.button(
@@ -1133,11 +1030,7 @@ if not st.session_state.logged_in:
         ):
 
             user_df = conn.query(
-                """
-                SELECT id, role, password
-                FROM users
-                WHERE username = :u
-                """,
+                "SELECT id, role, password FROM users WHERE username = :u",
                 params={
                     "u": username_input
                 }
@@ -1166,14 +1059,12 @@ if not st.session_state.logged_in:
                 with conn.session as s:
 
                     result = s.execute(
-                        text(
-                            """
+                        text("""
                             INSERT INTO user_logs
                             (username, login_time)
                             VALUES (:u, :lt)
                             RETURNING id
-                            """
-                        ),
+                        """),
                         {
                             "u": username_input,
                             "lt": st.session_state.login_time
@@ -1211,15 +1102,15 @@ if not st.session_state.logged_in:
         )
 
 
-# =============================================================
-# 5. MAIN APPLICATION
-# =============================================================
+# -------------------------------------------------------------
+# 5. Main Application
+# -------------------------------------------------------------
 
 else:
 
-    # =========================================================
-    # SIDEBAR
-    # =========================================================
+    # ---------------------------------------------------------
+    # Sidebar
+    # ---------------------------------------------------------
 
     st.sidebar.image(
         ENCORE_LOGO_URL,
@@ -1248,7 +1139,7 @@ else:
                 text-transform:uppercase;
                 letter-spacing:1px;
             ">
-                Signed In As
+                User
             </div>
 
             <div style="
@@ -1263,7 +1154,7 @@ else:
             <div style="
                 color:#A8B7CC;
                 font-size:12px;
-                margin-top:3px;
+                margin-top:4px;
             ">
                 🛡️ {st.session_state.role.upper()}
             </div>
@@ -1282,9 +1173,9 @@ else:
     st.sidebar.markdown("---")
 
 
-    # =========================================================
-    # DATA FETCHING & PROCESSING
-    # =========================================================
+    # ---------------------------------------------------------
+    # Data Fetching & Processing
+    # ---------------------------------------------------------
 
     df = conn.query(
         "SELECT * FROM fp_analysis",
@@ -1335,12 +1226,10 @@ else:
 
         if available_months_str:
 
-            selected_month_str = (
-                st.sidebar.selectbox(
-                    "Select Month",
-                    available_months_str,
-                    index=default_index
-                )
+            selected_month_str = st.sidebar.selectbox(
+                "Select Month",
+                available_months_str,
+                index=default_index
             )
 
             selected_period = pd.Period(
@@ -1410,9 +1299,9 @@ else:
         )
 
 
-    # =========================================================
-    # PREMIUM HEADER
-    # =========================================================
+    # ---------------------------------------------------------
+    # Stylish Custom Header
+    # ---------------------------------------------------------
 
     st.markdown(
         f"""
@@ -1427,8 +1316,8 @@ else:
                 </h1>
 
                 <p>
-                    Finished Product Analysis
-                    &amp; Workflow Tracking
+                    Finished Product Analysis &amp;
+                    Workflow Tracking
                 </p>
 
             </div>
@@ -1439,9 +1328,9 @@ else:
     )
 
 
-    # =========================================================
-    # TABS
-    # =========================================================
+    # ---------------------------------------------------------
+    # Tabs
+    # ---------------------------------------------------------
 
     tab_list = [
         "📊 Analytics Dashboard",
@@ -1459,41 +1348,13 @@ else:
 
 
     # =========================================================
-    # TAB 1 — ANALYTICS DASHBOARD
+    # TAB 1: ANALYTICS
     # =========================================================
 
     with tabs[0]:
 
         st.markdown(
             "<br>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            """
-            <div style="
-                margin-bottom:18px;
-            ">
-                <div style="
-                    color:#64748B;
-                    font-size:12px;
-                    font-weight:800;
-                    text-transform:uppercase;
-                    letter-spacing:1.2px;
-                ">
-                    QC Performance Overview
-                </div>
-
-                <div style="
-                    color:#0B1C3E;
-                    font-size:24px;
-                    font-weight:800;
-                    margin-top:4px;
-                ">
-                    Finished Product Analysis
-                </div>
-            </div>
-            """,
             unsafe_allow_html=True
         )
 
@@ -1532,9 +1393,9 @@ else:
         )
 
 
-        # =====================================================
-        # KPI CARDS
-        # =====================================================
+        # -----------------------------------------------------
+        # KPI Cards
+        # -----------------------------------------------------
 
         c1, c2, c3, c4 = st.columns(4)
 
@@ -1551,19 +1412,10 @@ else:
                     {total_batches:,}
                 </div>
 
-                <div style="
-                    color:#94A3B8;
-                    font-size:11px;
-                    margin-top:5px;
-                ">
-                    Selected period
-                </div>
-
             </div>
             """,
             unsafe_allow_html=True
         )
-
 
         c2.markdown(
             f"""
@@ -1581,19 +1433,10 @@ else:
 
                 </div>
 
-                <div style="
-                    color:#94A3B8;
-                    font-size:11px;
-                    margin-top:5px;
-                ">
-                    Successfully released
-                </div>
-
             </div>
             """,
             unsafe_allow_html=True
         )
-
 
         c3.markdown(
             f"""
@@ -1601,7 +1444,7 @@ else:
                  style="border-left-color:#F59E0B;">
 
                 <div class="metric-label">
-                    Avg TAT
+                    Avg TAT (Days)
                 </div>
 
                 <div class="metric-value"
@@ -1611,19 +1454,10 @@ else:
 
                 </div>
 
-                <div style="
-                    color:#94A3B8;
-                    font-size:11px;
-                    margin-top:5px;
-                ">
-                    Days
-                </div>
-
             </div>
             """,
             unsafe_allow_html=True
         )
-
 
         c4.markdown(
             f"""
@@ -1641,14 +1475,6 @@ else:
 
                 </div>
 
-                <div style="
-                    color:#94A3B8;
-                    font-size:11px;
-                    margin-top:5px;
-                ">
-                    Requiring attention
-                </div>
-
             </div>
             """,
             unsafe_allow_html=True
@@ -1661,9 +1487,9 @@ else:
         )
 
 
-        # =====================================================
-        # WORKFLOW CHART
-        # =====================================================
+        # -----------------------------------------------------
+        # Workflow Chart
+        # -----------------------------------------------------
 
         if (
             total_batches > 0
@@ -1674,35 +1500,7 @@ else:
         ):
 
             st.markdown(
-                """
-                <div style="
-                    background:#FFFFFF;
-                    border:1px solid #E8EDF5;
-                    border-radius:17px;
-                    padding:20px 22px 8px 22px;
-                    box-shadow:
-                        0 5px 20px
-                        rgba(15,23,42,0.045);
-                    margin-top:5px;
-                ">
-                    <div style="
-                        color:#0B1C3E;
-                        font-size:18px;
-                        font-weight:800;
-                    ">
-                        🚦 Micro-Stage Workflow Durations
-                    </div>
-
-                    <div style="
-                        color:#94A3B8;
-                        font-size:12px;
-                        margin-top:4px;
-                    ">
-                        Time consumed across each QC process stage
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
+                "### 🚦 Micro-Stage Workflow Durations"
             )
 
             stage_df = df[
@@ -1745,13 +1543,6 @@ else:
                     t=20,
                     b=20
                 ),
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                ),
                 hovermode="x unified"
             )
 
@@ -1771,52 +1562,15 @@ else:
 
 
     # =========================================================
-    # TAB 2 — BATCH REGISTRATION
+    # TAB 2: INTAKE FORM
     # =========================================================
 
     with tabs[1]:
 
         st.markdown(
-            "<br>",
+            "<br>### 📝 Batch Registration Form",
             unsafe_allow_html=True
         )
-
-        st.markdown(
-            """
-            <div style="margin-bottom:18px;">
-
-                <div style="
-                    color:#64748B;
-                    font-size:12px;
-                    font-weight:800;
-                    text-transform:uppercase;
-                    letter-spacing:1.1px;
-                ">
-                    QC Data Entry
-                </div>
-
-                <div style="
-                    color:#0B1C3E;
-                    font-size:24px;
-                    font-weight:800;
-                    margin-top:4px;
-                ">
-                    📝 Batch Registration
-                </div>
-
-                <div style="
-                    color:#94A3B8;
-                    font-size:13px;
-                    margin-top:5px;
-                ">
-                    Register a new finished product analysis batch.
-                </div>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
 
         with st.form(
             "full_intake_form",
@@ -1824,7 +1578,6 @@ else:
         ):
 
             f_col1, f_col2, f_col3 = st.columns(3)
-
 
             with f_col1:
 
@@ -1849,7 +1602,6 @@ else:
                     ]
                 )
 
-
             with f_col2:
 
                 sample_receipt_date = st.date_input(
@@ -1866,7 +1618,6 @@ else:
                     "Analysis Completion Date",
                     value=None
                 )
-
 
             with f_col3:
 
@@ -1896,23 +1647,18 @@ else:
                     min_value=0.0
                 )
 
-
             st.markdown(
                 "<br>",
                 unsafe_allow_html=True
             )
 
-
             if st.form_submit_button(
-                "💾  Save Batch to Vault",
+                "💾 Save Batch to Vault",
                 type="primary",
                 use_container_width=True
             ):
 
-                if (
-                    not product_name
-                    or not batch_no
-                ):
+                if not product_name or not batch_no:
 
                     st.error(
                         "Product Name and Batch Number are required."
@@ -1925,8 +1671,7 @@ else:
                         with conn.session as s:
 
                             s.execute(
-                                text(
-                                    """
+                                text("""
                                     INSERT INTO fp_analysis
                                     (
                                         product_name,
@@ -1941,7 +1686,6 @@ else:
                                         coa_completion_date,
                                         actual_testing_hours
                                     )
-
                                     VALUES
                                     (
                                         :pn,
@@ -1956,8 +1700,7 @@ else:
                                         :ccd,
                                         :ath
                                     )
-                                    """
-                                ),
+                                """),
                                 {
                                     "pn": product_name,
                                     "bn": batch_no,
@@ -1989,52 +1732,15 @@ else:
 
 
     # =========================================================
-    # TAB 3 — MASTER DATABASE
+    # TAB 3: LIVE GRID
     # =========================================================
 
     with tabs[2]:
 
         st.markdown(
-            "<br>",
+            "<br>### 📋 Centralized Database Editor",
             unsafe_allow_html=True
         )
-
-        st.markdown(
-            """
-            <div style="margin-bottom:18px;">
-
-                <div style="
-                    color:#64748B;
-                    font-size:12px;
-                    font-weight:800;
-                    text-transform:uppercase;
-                    letter-spacing:1.1px;
-                ">
-                    Central Records
-                </div>
-
-                <div style="
-                    color:#0B1C3E;
-                    font-size:24px;
-                    font-weight:800;
-                    margin-top:4px;
-                ">
-                    📋 Master Database
-                </div>
-
-                <div style="
-                    color:#94A3B8;
-                    font-size:13px;
-                    margin-top:5px;
-                ">
-                    Review and edit QC analysis records.
-                </div>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
 
         if not df.empty:
 
@@ -2047,15 +1753,8 @@ else:
                 hide_index=True
             )
 
-
-            st.markdown(
-                "<br>",
-                unsafe_allow_html=True
-            )
-
-
             if st.button(
-                "💾  Commit Modifications",
+                "💾 Commit Modifications",
                 type="primary"
             ):
 
@@ -2085,100 +1784,23 @@ else:
 
 
     # =========================================================
-    # TAB 4 — ADMIN PANEL
+    # TAB 4: ADMIN PANEL
     # =========================================================
 
     if st.session_state.role == "admin":
 
         with tabs[3]:
 
-            st.markdown(
-                "<br>",
-                unsafe_allow_html=True
-            )
-
-            st.markdown(
-                """
-                <div style="margin-bottom:20px;">
-
-                    <div style="
-                        color:#64748B;
-                        font-size:12px;
-                        font-weight:800;
-                        text-transform:uppercase;
-                        letter-spacing:1.1px;
-                    ">
-                        System Administration
-                    </div>
-
-                    <div style="
-                        color:#0B1C3E;
-                        font-size:24px;
-                        font-weight:800;
-                        margin-top:4px;
-                    ">
-                        🛡️ Admin Control Center
-                    </div>
-
-                    <div style="
-                        color:#94A3B8;
-                        font-size:13px;
-                        margin-top:5px;
-                    ">
-                        Manage system users and review access activity.
-                    </div>
-
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-
             adm_col1, adm_col2 = st.columns(
                 [1, 2]
             )
 
-
-            # =================================================
-            # USER MANAGEMENT
-            # =================================================
-
             with adm_col1:
 
                 st.markdown(
-                    """
-                    <div style="
-                        background:#FFFFFF;
-                        border:1px solid #E8EDF5;
-                        border-radius:17px;
-                        padding:20px;
-                        box-shadow:
-                            0 5px 20px
-                            rgba(15,23,42,0.045);
-                        margin-bottom:18px;
-                    ">
-
-                        <div style="
-                            color:#0B1C3E;
-                            font-size:18px;
-                            font-weight:800;
-                        ">
-                            👤 User Management
-                        </div>
-
-                        <div style="
-                            color:#94A3B8;
-                            font-size:12px;
-                            margin-top:4px;
-                        ">
-                            Create and revoke system access.
-                        </div>
-
-                    </div>
-                    """,
+                    "<br>### 👤 User Management",
                     unsafe_allow_html=True
                 )
-
 
                 with st.form(
                     "create_user_form",
@@ -2202,7 +1824,6 @@ else:
                         ]
                     )
 
-
                     if st.form_submit_button(
                         "Create User",
                         type="primary"
@@ -2215,8 +1836,7 @@ else:
                                 with conn.session as s:
 
                                     s.execute(
-                                        text(
-                                            """
+                                        text("""
                                             INSERT INTO users
                                             (
                                                 username,
@@ -2229,8 +1849,7 @@ else:
                                                 :p,
                                                 :r
                                             )
-                                            """
-                                        ),
+                                        """),
                                         {
                                             "u": new_user,
                                             "p": hash_password(
@@ -2263,7 +1882,6 @@ else:
                     "#### Delete User"
                 )
 
-
                 users_df = conn.query(
                     """
                     SELECT id, username, role
@@ -2273,14 +1891,12 @@ else:
                     ttl=0
                 )
 
-
                 if not users_df.empty:
 
                     del_user = st.selectbox(
                         "Select user to delete",
                         users_df["username"].tolist()
                     )
-
 
                     if st.button(
                         "Revoke Access"
@@ -2289,12 +1905,10 @@ else:
                         with conn.session as s:
 
                             s.execute(
-                                text(
-                                    """
+                                text("""
                                     DELETE FROM users
                                     WHERE username = :u
-                                    """
-                                ),
+                                """),
                                 {
                                     "u": del_user
                                 }
@@ -2309,46 +1923,12 @@ else:
                         st.rerun()
 
 
-            # =================================================
-            # AUDIT LOGS
-            # =================================================
-
             with adm_col2:
 
                 st.markdown(
-                    """
-                    <div style="
-                        background:#FFFFFF;
-                        border:1px solid #E8EDF5;
-                        border-radius:17px;
-                        padding:20px;
-                        box-shadow:
-                            0 5px 20px
-                            rgba(15,23,42,0.045);
-                        margin-bottom:18px;
-                    ">
-
-                        <div style="
-                            color:#0B1C3E;
-                            font-size:18px;
-                            font-weight:800;
-                        ">
-                            🕒 Access &amp; Audit Logs
-                        </div>
-
-                        <div style="
-                            color:#94A3B8;
-                            font-size:12px;
-                            margin-top:4px;
-                        ">
-                            Monitor system access and usage.
-                        </div>
-
-                    </div>
-                    """,
+                    "<br>### 🕒 Access & Audit Logs",
                     unsafe_allow_html=True
                 )
-
 
                 logs_df = conn.query(
                     """
@@ -2363,15 +1943,9 @@ else:
                     ttl=0
                 )
 
-
                 st.dataframe(
                     logs_df,
                     use_container_width=True,
                     hide_index=True
                 )
-
-
-# =============================================================
-# END OF APPLICATION
-# =============================================================
 ```
