@@ -19,8 +19,34 @@ st.markdown(f"""
     
     html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
     
-    /* Background & Main App */
-    .stApp {{ background: #F7F9FC; }}
+    /* Background & Main App with Faded Watermark */
+    .stApp {{ 
+        background-color: #F7F9FC; 
+        position: relative;
+    }}
+    
+    .stApp::before {{
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url("{ENCORE_LOGO_URL}");
+        background-size: 60%;
+        background-position: center center;
+        background-repeat: no-repeat;
+        opacity: 0.04; /* Controls the faded watermark effect */
+        z-index: 0;
+        pointer-events: none;
+        background-attachment: fixed;
+    }}
+    
+    /* Ensures main content stays above the watermark */
+    .block-container {{
+        position: relative;
+        z-index: 1;
+    }}
     
     /* Custom Header Bar */
     .top-header {{
@@ -145,14 +171,14 @@ if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         st.markdown(f"""
-            <div style="text-align: center; margin-bottom: 20px;">
+            <div style="text-align: center; margin-bottom: 20px; position: relative; z-index: 10;">
                 <img src="{ENCORE_LOGO_URL}" style="height: 70px;">
                 <h2 style="color: #0B1C3E; font-weight: 800; margin-top: 10px;">Encore Healthcare</h2>
                 <p style="color: #64748B;">QC Operations Hub</p>
             </div>
         """, unsafe_allow_html=True)
         
-        st.markdown('<div class="trendy-card" style="border-left: none; border-top: 5px solid #4318FF; text-align: center;">', unsafe_allow_html=True)
+        st.markdown('<div class="trendy-card" style="border-left: none; border-top: 5px solid #4318FF; text-align: center; position: relative; z-index: 10;">', unsafe_allow_html=True)
         st.subheader("🔐 System Login")
         username_input = st.text_input("Username")
         password_input = st.text_input("Password", type="password")
