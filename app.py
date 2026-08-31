@@ -264,13 +264,13 @@ else:
             analyst_name = st.text_input("Name of Analyst")
             
         with f_col2:
-            sample_receipt_date = st.date_input("Sample Receipt Date", value=date.today(), format="DD/MM/YY")
-            analysis_start_date = st.date_input("Analysis Start Date", value=None, format="DD/MM/YY")
-            analysis_completion_date = st.date_input("Analysis Completion Date", value=None, format="DD/MM/YY")
+            sample_receipt_date = st.date_input("Sample Receipt Date", value=date.today(), format="DD/MM/YYYY")
+            analysis_start_date = st.date_input("Analysis Start Date", value=None, format="DD/MM/YYYY")
+            analysis_completion_date = st.date_input("Analysis Completion Date", value=None, format="DD/MM/YYYY")
             
         with f_col3:
-            review_completion_date = st.date_input("Review Completion Date", value=None, format="DD/MM/YY")
-            coa_completion_date = st.date_input("COA Completion Date", value=None, format="DD/MM/YY")
+            review_completion_date = st.date_input("Review Completion Date", value=None, format="DD/MM/YYYY")
+            coa_completion_date = st.date_input("COA Completion Date", value=None, format="DD/MM/YYYY")
             
         st.markdown("---")
         
@@ -336,18 +336,16 @@ else:
         if not df.empty:
             
             # Format display appropriately with column configuration
-            date_col_config = st.column_config.DateColumn("Date", format="DD/MM/YY")
-            
             edited_df = st.data_editor(
                 df.drop(columns=['MonthYear'], errors='ignore'), 
                 use_container_width=True, 
                 hide_index=True,
                 column_config={
-                    "sample_receipt_date": st.column_config.DateColumn("Sample Receipt Date", format="DD/MM/YY"),
-                    "analysis_start_date": st.column_config.DateColumn("Analysis Start Date", format="DD/MM/YY"),
-                    "analysis_completion_date": st.column_config.DateColumn("Analysis Completion Date", format="DD/MM/YY"),
-                    "review_completion_date": st.column_config.DateColumn("Review Completion Date", format="DD/MM/YY"),
-                    "coa_completion_date": st.column_config.DateColumn("COA Completion Date", format="DD/MM/YY")
+                    "sample_receipt_date": st.column_config.DateColumn("Sample Receipt Date", format="DD/MM/YYYY"),
+                    "analysis_start_date": st.column_config.DateColumn("Analysis Start Date", format="DD/MM/YYYY"),
+                    "analysis_completion_date": st.column_config.DateColumn("Analysis Completion Date", format="DD/MM/YYYY"),
+                    "review_completion_date": st.column_config.DateColumn("Review Completion Date", format="DD/MM/YYYY"),
+                    "coa_completion_date": st.column_config.DateColumn("COA Completion Date", format="DD/MM/YYYY")
                 }
             )
             if st.button("💾 Commit Modifications", type="primary"):
@@ -396,7 +394,7 @@ else:
                     use_container_width=True, 
                     hide_index=True,
                     column_config={
-                        "login_time": st.column_config.DatetimeColumn("Login Time", format="DD/MM/YY HH:mm"),
-                        "logout_time": st.column_config.DatetimeColumn("Logout Time", format="DD/MM/YY HH:mm")
+                        "login_time": st.column_config.DatetimeColumn("Login Time", format="DD/MM/YYYY HH:mm"),
+                        "logout_time": st.column_config.DatetimeColumn("Logout Time", format="DD/MM/YYYY HH:mm")
                     }
                 )
