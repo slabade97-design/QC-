@@ -153,7 +153,7 @@ if not st.session_state.logged_in:
         """, unsafe_allow_html=True)
         
         st.markdown('<div class="trendy-card" style="border-left: none; border-top: 5px solid #4318FF; text-align: center;">', unsafe_allow_html=True)
-        st.subheader("🔐 System Login")
+        st.subheader("System Login")
         username_input = st.text_input("Username")
         password_input = st.text_input("Password", type="password")
         
