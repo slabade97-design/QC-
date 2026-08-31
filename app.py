@@ -91,7 +91,7 @@ def init_db():
                 id SERIAL PRIMARY KEY, product_name TEXT, strength TEXT, batch_no TEXT UNIQUE,
                 sample_receipt_date DATE, analysis_start_date DATE, analysis_completion_date DATE,
                 review_completion_date DATE, coa_completion_date DATE, target_release_date DATE,
-                analyst_name TEXT, status TEXT DEFAULT 'In Progress', delay_reason TEXT, actual_testing_hours REAL
+                analyst_name TEXT, status TEXT DEFAULT 'Sample Received', delay_reason TEXT, actual_testing_hours REAL
             )
         """))
         s.execute(text("""
@@ -255,47 +255,101 @@ else:
     # --- TAB 2: INTAKE FORM ---
     with tabs[1]:
         st.markdown("<br>### 📝 Batch Registration Form", unsafe_allow_html=True)
-        with st.form("full_intake_form", clear_on_submit=True):
-            f_col1, f_col2, f_col3 = st.columns(3)
-            with f_col1:
-                product_name = st.text_input("Product Name *")
-                batch_no = st.text_input("Batch Number *")
-                analyst_name = st.text_input("Name of Analyst")
-                status = st.selectbox("Status", ["In Progress", "Release", "Delayed"])
-            with f_col2:
-                sample_receipt_date = st.date_input("Sample Receipt Date", value=date.today())
-                analysis_start_date = st.date_input("Analysis Start Date", value=None)
-                analysis_completion_date = st.date_input("Analysis Completion Date", value=None)
-            with f_col3:
-                review_completion_date = st.date_input("Review Completion Date", value=None)
-                coa_completion_date = st.date_input("COA Completion Date", value=None)
-                delay_reason = st.selectbox("Delay Reason", ["Within Time", "Instrument Maintenance", "OOS Investigation", "Manpower Crunch", "Other"])
-                actual_testing_hours = st.number_input("Actual Testing Time (Hours)", min_value=0.0)
+        
+        # We removed st.form here so that UI is immediately reactive to date changes
+        f_col1, f_col2, f_col3 = st.columns(3)
+        with f_col1:
+            product_name = st.text_input("Product Name *")
+            batch_no = st.text_input("Batch Number *")
+            analyst_name = st.text_input("Name of Analyst")
+            
+        with f_col2:
+            sample_receipt_date = st.date_input("Sample Receipt Date", value=date.today(), format="DD/MM/YY")
+            analysis_start_date = st.date_input("Analysis Start Date", value=None, format="DD/MM/YY")
+            analysis_completion_date = st.date_input("Analysis Completion Date", value=None, format="DD/MM/YY")
+            
+        with f_col3:
+            review_completion_date = st.date_input("Review Completion Date", value=None, format="DD/MM/YY")
+            coa_completion_date = st.date_input("COA Completion Date", value=None, format="DD/MM/YY")
+            
+        st.markdown("---")
+        
+        # 1) Auto-Calculate Dynamic Status
+        if coa_completion_date:
+            derived_status = "Release"
+        elif review_completion_date:
+            derived_status = "COA Awaited"
+        elif analysis_completion_date:
+            derived_status = "Analysis Completed"
+        elif analysis_start_date:
+            derived_status = "Analysis Started"
+        elif sample_receipt_date:
+            derived_status = "Sample Received"
+        else:
+            derived_status = "Pending"
+            
+        st.info(f"**Auto-Calculated Status:** {derived_status}")
+            
+        # 2) Logic for Delay Reason
+        delay_reason = "Within Time"
+        if sample_receipt_date and analysis_completion_date:
+            date_diff = (analysis_completion_date - sample_receipt_date).days
+            if date_diff > 6:
+                delay_reason = st.selectbox(
+                    "Delay Reason (Required as TAT > 6 days) *", 
+                    ["Instrument Maintenance", "OOS Investigation", "Manpower Crunch", "Other"]
+                )
                 
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.form_submit_button("💾 Save Batch to Vault", type="primary", use_container_width=True):
-                if not product_name or not batch_no:
-                    st.error("Product Name and Batch Number are required.")
-                else:
-                    try:
-                        with conn.session as s:
-                            s.execute(text("""
-                                INSERT INTO fp_analysis (product_name, batch_no, analyst_name, status, delay_reason, 
-                                sample_receipt_date, analysis_start_date, analysis_completion_date, review_completion_date, 
-                                coa_completion_date, actual_testing_hours) 
-                                VALUES (:pn, :bn, :an, :st, :dr, :srd, :asd, :acd, :rcd, :ccd, :ath)
-                            """), {"pn": product_name, "bn": batch_no, "an": analyst_name, "st": status, "dr": delay_reason, "srd": sample_receipt_date, "asd": analysis_start_date, "acd": analysis_completion_date, "rcd": review_completion_date, "ccd": coa_completion_date, "ath": actual_testing_hours})
-                            s.commit()
-                        st.success(f"Batch {batch_no} saved securely.")
-                        st.rerun()
-                    except Exception:
-                        st.error("Error: Batch Number already exists in the system.")
+        # 3) Calculate Actual Total TAT Time
+        if sample_receipt_date and coa_completion_date:
+            actual_testing_days = (coa_completion_date - sample_receipt_date).days
+        else:
+            actual_testing_days = None
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("💾 Save Batch to Vault", type="primary", use_container_width=True):
+            if not product_name or not batch_no:
+                st.error("Product Name and Batch Number are required.")
+            else:
+                try:
+                    with conn.session as s:
+                        s.execute(text("""
+                            INSERT INTO fp_analysis (product_name, batch_no, analyst_name, status, delay_reason, 
+                            sample_receipt_date, analysis_start_date, analysis_completion_date, review_completion_date, 
+                            coa_completion_date, actual_testing_hours) 
+                            VALUES (:pn, :bn, :an, :st, :dr, :srd, :asd, :acd, :rcd, :ccd, :ath)
+                        """), {
+                            "pn": product_name, "bn": batch_no, "an": analyst_name, "st": derived_status, 
+                            "dr": delay_reason, "srd": sample_receipt_date, "asd": analysis_start_date, 
+                            "acd": analysis_completion_date, "rcd": review_completion_date, 
+                            "ccd": coa_completion_date, "ath": actual_testing_days
+                        })
+                        s.commit()
+                    st.success(f"Batch {batch_no} saved securely.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: Batch Number already exists in the system or invalid data. ({e})")
 
     # --- TAB 3: LIVE GRID ---
     with tabs[2]:
         st.markdown("<br>### 📋 Centralized Database Editor", unsafe_allow_html=True)
         if not df.empty:
-            edited_df = st.data_editor(df.drop(columns=['MonthYear'], errors='ignore'), use_container_width=True, hide_index=True)
+            
+            # Format display appropriately with column configuration
+            date_col_config = st.column_config.DateColumn("Date", format="DD/MM/YY")
+            
+            edited_df = st.data_editor(
+                df.drop(columns=['MonthYear'], errors='ignore'), 
+                use_container_width=True, 
+                hide_index=True,
+                column_config={
+                    "sample_receipt_date": st.column_config.DateColumn("Sample Receipt Date", format="DD/MM/YY"),
+                    "analysis_start_date": st.column_config.DateColumn("Analysis Start Date", format="DD/MM/YY"),
+                    "analysis_completion_date": st.column_config.DateColumn("Analysis Completion Date", format="DD/MM/YY"),
+                    "review_completion_date": st.column_config.DateColumn("Review Completion Date", format="DD/MM/YY"),
+                    "coa_completion_date": st.column_config.DateColumn("COA Completion Date", format="DD/MM/YY")
+                }
+            )
             if st.button("💾 Commit Modifications", type="primary"):
                 save_df = edited_df.drop(columns=['Queue Time (Days)', 'Testing Time (Days)', 'Review Time (Days)', 'COA Time (Days)', 'Total TAT (Days)'], errors='ignore')
                 save_df.to_sql("fp_analysis", con=conn.engine, if_exists="replace", index=False)
@@ -337,4 +391,12 @@ else:
             with adm_col2:
                 st.markdown("<br>### 🕒 Access & Audit Logs", unsafe_allow_html=True)
                 logs_df = conn.query("SELECT username, login_time, logout_time, usage_minutes FROM user_logs ORDER BY login_time DESC", ttl=0)
-                st.dataframe(logs_df, use_container_width=True, hide_index=True)
+                st.dataframe(
+                    logs_df, 
+                    use_container_width=True, 
+                    hide_index=True,
+                    column_config={
+                        "login_time": st.column_config.DatetimeColumn("Login Time", format="DD/MM/YY HH:mm"),
+                        "logout_time": st.column_config.DatetimeColumn("Logout Time", format="DD/MM/YY HH:mm")
+                    }
+                )
