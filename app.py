@@ -510,55 +510,80 @@ else:
             
             if uploaded_file and st.button("Merge Data to Database", type="primary"):
                 try:
-                    upload_df = pd.read_excel(uploaded_file, sheet_name=0)
-                    upload_df = upload_df.iloc[1:].copy()
+                    existing_batches_df = pd.read_sql("SELECT batch_no FROM qc_master_tracker", con=conn.engine)
+                    existing_batches = set(existing_batches_df['batch_no'].tolist())
                     
-                    rename_map = {
-                        upload_df.columns[1]: 'product_name',
-                        upload_df.columns[2]: 'client_name',
-                        upload_df.columns[3]: 'batch_no',
-                        upload_df.columns[4]: 'ar_no',
-                        upload_df.columns[5]: 'batch_size',
-                        upload_df.columns[6]: 'mfg_date',
-                        upload_df.columns[7]: 'exp_date',
-                        upload_df.columns[8]: 'sample_qty',
-                        upload_df.columns[9]: 'sample_receipt_date',
-                        upload_df.columns[10]: 'target_release_date',
-                        upload_df.columns[11]: 'chem_analyst',
-                        upload_df.columns[12]: 'chem_qty',
-                        upload_df.columns[13]: 'chem_start',
-                        upload_df.columns[14]: 'chem_end',
-                        upload_df.columns[15]: 'chem_analysis_hrs',
-                        upload_df.columns[16]: 'micro_analyst',
-                        upload_df.columns[17]: 'micro_qty',
-                        upload_df.columns[18]: 'micro_start',
-                        upload_df.columns[19]: 'micro_end',
-                        upload_df.columns[20]: 'micro_analysis_hrs',
-                        upload_df.columns[21]: 'total_analysis_hrs',
-                        upload_df.columns[22]: 'coa_completion_date',
-                        upload_df.columns[24]: 'status',
-                        upload_df.columns[25]: 'chem_destruct_qty',
-                        upload_df.columns[26]: 'chem_destroyed_by',
-                        upload_df.columns[27]: 'micro_destruct_qty',
-                        upload_df.columns[28]: 'micro_destroyed_by',
-                        upload_df.columns[29]: 'delay_reason',
-                        upload_df.columns[30]: 'remarks',
-                    }
+                    target_sheets = ['Open FP Analysis Tracker', 'Closed FP Analysis Tracker']
+                    total_added = 0
+                    total_skipped = 0
                     
-                    db_df = upload_df[list(rename_map.keys())].rename(columns=rename_map)
-                    db_df.dropna(subset=['batch_no'], inplace=True)
-                    
-                    for col in db_df.select_dtypes(include=['object', 'string']).columns:
-                        db_df[col] = db_df[col].apply(lambda x: str(x).strip() if pd.notna(x) and isinstance(x, str) else x)
-                    
-                    for col in ['sample_receipt_date', 'target_release_date', 'chem_start', 'chem_end', 'micro_start', 'micro_end', 'coa_completion_date']:
-                        db_df[col] = pd.to_datetime(db_df[col], errors='coerce')
-                    
-                    for col in ['chem_analysis_hrs', 'micro_analysis_hrs', 'total_analysis_hrs']:
-                        db_df[col] = pd.to_numeric(db_df[col], errors='coerce').fillna(0)
+                    for sheet_name in target_sheets:
+                        try:
+                            upload_df = pd.read_excel(uploaded_file, sheet_name=sheet_name)
+                        except ValueError:
+                            continue
+
+                        upload_df = upload_df.iloc[1:].copy()
                         
-                    db_df.to_sql("qc_master_tracker", con=conn.engine, if_exists="append", index=False)
-                    st.success("Historical Excel Data successfully synchronized with the Vault!")
+                        rename_map = {
+                            upload_df.columns[1]: 'product_name',
+                            upload_df.columns[2]: 'client_name',
+                            upload_df.columns[3]: 'batch_no',
+                            upload_df.columns[4]: 'ar_no',
+                            upload_df.columns[5]: 'batch_size',
+                            upload_df.columns[6]: 'mfg_date',
+                            upload_df.columns[7]: 'exp_date',
+                            upload_df.columns[8]: 'sample_qty',
+                            upload_df.columns[9]: 'sample_receipt_date',
+                            upload_df.columns[10]: 'target_release_date',
+                            upload_df.columns[11]: 'chem_analyst',
+                            upload_df.columns[12]: 'chem_qty',
+                            upload_df.columns[13]: 'chem_start',
+                            upload_df.columns[14]: 'chem_end',
+                            upload_df.columns[15]: 'chem_analysis_hrs',
+                            upload_df.columns[16]: 'micro_analyst',
+                            upload_df.columns[17]: 'micro_qty',
+                            upload_df.columns[18]: 'micro_start',
+                            upload_df.columns[19]: 'micro_end',
+                            upload_df.columns[20]: 'micro_analysis_hrs',
+                            upload_df.columns[21]: 'total_analysis_hrs',
+                            upload_df.columns[22]: 'coa_completion_date',
+                            upload_df.columns[24]: 'status',
+                            upload_df.columns[25]: 'chem_destruct_qty',
+                            upload_df.columns[26]: 'chem_destroyed_by',
+                            upload_df.columns[27]: 'micro_destruct_qty',
+                            upload_df.columns[28]: 'micro_destroyed_by',
+                            upload_df.columns[29]: 'delay_reason',
+                            upload_df.columns[30]: 'remarks',
+                        }
+                        
+                        db_df = upload_df[list(rename_map.keys())].rename(columns=rename_map)
+                        db_df.dropna(subset=['batch_no'], inplace=True)
+                        
+                        for col in db_df.select_dtypes(include=['object', 'string']).columns:
+                            db_df[col] = db_df[col].apply(lambda x: str(x).strip() if pd.notna(x) and isinstance(x, str) else x)
+                        
+                        initial_count = len(db_df)
+                        db_df = db_df[~db_df['batch_no'].isin(existing_batches)]
+                        new_count = len(db_df)
+                        
+                        total_skipped += (initial_count - new_count)
+                        total_added += new_count
+                        
+                        if new_count == 0:
+                            continue
+
+                        existing_batches.update(db_df['batch_no'].tolist())
+                        
+                        for col in ['sample_receipt_date', 'target_release_date', 'chem_start', 'chem_end', 'micro_start', 'micro_end', 'coa_completion_date']:
+                            db_df[col] = pd.to_datetime(db_df[col], errors='coerce')
+                        
+                        for col in ['chem_analysis_hrs', 'micro_analysis_hrs', 'total_analysis_hrs']:
+                            db_df[col] = pd.to_numeric(db_df[col], errors='coerce').fillna(0)
+                            
+                        db_df.to_sql("qc_master_tracker", con=conn.engine, if_exists="append", index=False)
+                    
+                    st.success(f"Sync Complete! Added {total_added} new batches. Skipped {total_skipped} existing batches.")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error parsing uploaded file. Please ensure it perfectly matches the standard template. Details: {e}")
