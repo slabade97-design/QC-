@@ -116,7 +116,7 @@ st.markdown(f"""
     .top-header img {{ height: 50px; margin-right: 20px; }} 
     .top-header h1 {{ margin: 0; font-size: 2.2rem; font-weight: 800; }}
     .top-header p {{ margin: 5px 0 0 0; color: #94A3B8; font-weight: 500; }}
-    .trendy-card {{ background: #FFFFFF; border-radius: 16px; padding: 24px 20px; text-align: left; box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05); border-left: 6px solid #4318FF; position: relative; overflow: hidden; }}
+    .trendy-card {{ background: #FFFFFF; border-radius: 16px; padding: 24px 20px; text-align: left; box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05); border-left: 6px solid #4318FF; position: relative; overflow: hidden; height: 100%; }}
     .metric-value {{ font-size: 2.2rem; font-weight: 800; color: #1E293B; margin: 8px 0 0 0; }}
     .metric-label {{ color: #64748B; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }}
     .stTabs [data-baseweb="tab-list"] {{ border-bottom: 2px solid #E2E8F0; }}
@@ -253,26 +253,50 @@ else:
                 filtered_df = filtered_df[filtered_df['sample_receipt_date'].dt.year == int(selected_year)]
                 
             if selected_month != "All Months":
-                month_num = month_options.index(selected_month) # Index perfectly maps to 1-12
+                month_num = month_options.index(selected_month)
                 filtered_df = filtered_df[filtered_df['sample_receipt_date'].dt.month == month_num]
             # ---------------------------------------------
 
             if not filtered_df.empty:
+                # -----------------
+                # KPI CALCULATION
+                # -----------------
                 total_batches = len(filtered_df)
-                released = len(filtered_df[filtered_df['status'] == 'Released']) if 'status' in filtered_df.columns else 0
                 
+                if 'status' in filtered_df.columns:
+                    status_series = filtered_df['status'].astype(str).str.lower()
+                    released = len(status_series[status_series.str.contains('release', na=False)])
+                    under_test = len(status_series[status_series.str.contains('under', na=False)])
+                    coa_awaited = len(status_series[status_series.str.contains('coa await', na=False)])
+                    sample_received = len(status_series[status_series.str.contains('sample receiv', na=False)])
+                else:
+                    released = under_test = coa_awaited = sample_received = 0
+                    
                 open_delays = 0
                 if 'delay_reason' in filtered_df.columns:
-                    open_delays = len(filtered_df[filtered_df["delay_reason"].notna() & (filtered_df["delay_reason"].astype(str).str.strip() != "Within Time") & (filtered_df["delay_reason"].astype(str).str.strip() != "nan")])
+                    delay_series = filtered_df["delay_reason"].astype(str).str.lower()
+                    open_delays = len(delay_series[(delay_series != "within time") & (delay_series != "nan")])
                 
                 filtered_df['Total TAT'] = (filtered_df['coa_completion_date'] - filtered_df['sample_receipt_date']).dt.days
                 avg_tat = filtered_df['Total TAT'].mean() if not filtered_df['Total TAT'].dropna().empty else 0
                 
+                # Render Row 1 of KPIs
                 c1, c2, c3, c4 = st.columns(4)
                 c1.markdown(f'<div class="trendy-card"><div class="metric-label">Total Batches</div><div class="metric-value">{total_batches}</div></div>', unsafe_allow_html=True)
                 c2.markdown(f'<div class="trendy-card" style="border-left-color: #05CD99;"><div class="metric-label">Released</div><div class="metric-value" style="color: #05CD99;">{released}</div></div>', unsafe_allow_html=True)
-                c3.markdown(f'<div class="trendy-card" style="border-left-color: #F59E0B;"><div class="metric-label">Global Avg TAT (Days)</div><div class="metric-value" style="color: #F59E0B;">{avg_tat:.1f}</div></div>', unsafe_allow_html=True)
-                c4.markdown(f'<div class="trendy-card" style="border-left-color: #EF4444;"><div class="metric-label">Open Delays</div><div class="metric-value" style="color: #EF4444;">{open_delays}</div></div>', unsafe_allow_html=True)
+                c3.markdown(f'<div class="trendy-card" style="border-left-color: #4318FF;"><div class="metric-label">Under Analysis</div><div class="metric-value" style="color: #4318FF;">{under_test}</div></div>', unsafe_allow_html=True)
+                c4.markdown(f'<div class="trendy-card" style="border-left-color: #F59E0B;"><div class="metric-label">COA Awaited</div><div class="metric-value" style="color: #F59E0B;">{coa_awaited}</div></div>', unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Render Row 2 of KPIs
+                c5, c6, c7, c8 = st.columns(4)
+                c5.markdown(f'<div class="trendy-card" style="border-left-color: #00B5D8;"><div class="metric-label">Sample Received</div><div class="metric-value" style="color: #00B5D8;">{sample_received}</div></div>', unsafe_allow_html=True)
+                c6.markdown(f'<div class="trendy-card" style="border-left-color: #EF4444;"><div class="metric-label">Open Delays</div><div class="metric-value" style="color: #EF4444;">{open_delays}</div></div>', unsafe_allow_html=True)
+                c7.markdown(f'<div class="trendy-card" style="border-left-color: #8B5CF6;"><div class="metric-label">Global Avg TAT (Days)</div><div class="metric-value" style="color: #8B5CF6;">{avg_tat:.1f}</div></div>', unsafe_allow_html=True)
+                
+                pending_count = total_batches - (released + under_test + coa_awaited + sample_received)
+                c8.markdown(f'<div class="trendy-card" style="border-left-color: #94A3B8;"><div class="metric-label">Pending / Unassigned</div><div class="metric-value" style="color: #94A3B8;">{pending_count}</div></div>', unsafe_allow_html=True)
 
                 st.markdown("---")
                 
