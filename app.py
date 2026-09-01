@@ -1,4 +1,5 @@
 import hashlib
+import calendar
 from datetime import date, datetime, timedelta
 import pandas as pd
 import plotly.express as px
@@ -229,22 +230,31 @@ else:
             df['sample_receipt_date'] = pd.to_datetime(df['sample_receipt_date'], errors='coerce')
             df['coa_completion_date'] = pd.to_datetime(df['coa_completion_date'], errors='coerce')
             
-            # --- DYNAMIC MONTH-YEAR FILTER INTEGRATION ---
+            # --- DYNAMIC YEAR & MONTH FILTER INTEGRATION ---
             st.markdown("### 📅 Dashboard Filter")
             
-            # Extract formatted "Month Year" directly from the dataset
-            df['MonthYear'] = df['sample_receipt_date'].dt.to_period('M')
-            available_periods = ["All Time"] + [m.strftime('%B %Y') for m in sorted(df['MonthYear'].dropna().unique(), reverse=True)]
+            f_col1, f_col2, _ = st.columns([1, 1, 2])
             
-            filter_col1, _ = st.columns([1, 2])
-            with filter_col1:
-                selected_period = st.selectbox("Select Target Period:", available_periods)
+            with f_col1:
+                max_year = datetime.today().year
+                if not df['sample_receipt_date'].dropna().empty:
+                    max_year = max(max_year, int(df['sample_receipt_date'].dt.year.max()))
+                year_options = ["All Time"] + list(range(2026, max_year + 2))
+                selected_year = st.selectbox("Select Year:", year_options)
                 
-            if selected_period == "All Time":
-                filtered_df = df.copy()
-            else:
-                selected_m_y = pd.Period(datetime.strptime(selected_period, '%B %Y'), freq='M')
-                filtered_df = df[df['MonthYear'] == selected_m_y]
+            with f_col2:
+                month_options = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+                selected_month = st.selectbox("Select Month:", month_options)
+                
+            # Apply Year/Month Filter Logic
+            filtered_df = df.copy()
+            
+            if selected_year != "All Time":
+                filtered_df = filtered_df[filtered_df['sample_receipt_date'].dt.year == int(selected_year)]
+                
+            if selected_month != "All Months":
+                month_num = month_options.index(selected_month) # Index perfectly maps to 1-12
+                filtered_df = filtered_df[filtered_df['sample_receipt_date'].dt.month == month_num]
             # ---------------------------------------------
 
             if not filtered_df.empty:
@@ -297,7 +307,7 @@ else:
                         fig_status = px.pie(status_counts, names='Status', values='Count', template="plotly_white", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
                         st.plotly_chart(fig_status, use_container_width=True)
             else:
-                st.info("No batch data available for the selected time period.")
+                st.info("No batch data available for the selected date criteria.")
         else:
             st.info("Awaiting batch data to populate analytics.")
 
