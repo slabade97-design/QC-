@@ -210,10 +210,6 @@ else:
     
     df = conn.query("SELECT * FROM qc_master_tracker", ttl=0)
     
-    # ----------------------------------------------------------------
-    # BULLETPROOF DATA CLEANUP & SAFETY NET 
-    # Strips trailing spaces from Excel to guarantee exact text matching
-    # ----------------------------------------------------------------
     if not df.empty:
         for col in df.select_dtypes(include=['object', 'string']).columns:
             df[col] = df[col].apply(lambda x: str(x).strip() if pd.notna(x) and isinstance(x, str) else x)
@@ -233,56 +229,77 @@ else:
             df['sample_receipt_date'] = pd.to_datetime(df['sample_receipt_date'], errors='coerce')
             df['coa_completion_date'] = pd.to_datetime(df['coa_completion_date'], errors='coerce')
             
-            total_batches = len(df)
-            # Excel spaces are now cleanly matched to 'Released'
-            released = len(df[df['status'] == 'Released']) if 'status' in df.columns else 0
-            
-            open_delays = 0
-            if 'delay_reason' in df.columns:
-                # Also stripping delays just in case to avoid 'Within Time ' issues
-                open_delays = len(df[df["delay_reason"].notna() & (df["delay_reason"].astype(str).str.strip() != "Within Time") & (df["delay_reason"].astype(str).str.strip() != "nan")])
-            
-            df['Total TAT'] = (df['coa_completion_date'] - df['sample_receipt_date']).dt.days
-            avg_tat = df['Total TAT'].mean() if not df['Total TAT'].dropna().empty else 0
-            
-            c1, c2, c3, c4 = st.columns(4)
-            c1.markdown(f'<div class="trendy-card"><div class="metric-label">Total Batches</div><div class="metric-value">{total_batches}</div></div>', unsafe_allow_html=True)
-            c2.markdown(f'<div class="trendy-card" style="border-left-color: #05CD99;"><div class="metric-label">Released</div><div class="metric-value" style="color: #05CD99;">{released}</div></div>', unsafe_allow_html=True)
-            c3.markdown(f'<div class="trendy-card" style="border-left-color: #F59E0B;"><div class="metric-label">Global Avg TAT (Days)</div><div class="metric-value" style="color: #F59E0B;">{avg_tat:.1f}</div></div>', unsafe_allow_html=True)
-            c4.markdown(f'<div class="trendy-card" style="border-left-color: #EF4444;"><div class="metric-label">Open Delays</div><div class="metric-value" style="color: #EF4444;">{open_delays}</div></div>', unsafe_allow_html=True)
-
-            st.markdown("---")
-            
-            if 'chem_analysis_hrs' in df.columns and 'micro_analysis_hrs' in df.columns:
-                st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
-                time_df = df[['batch_no', 'chem_analysis_hrs', 'micro_analysis_hrs']].dropna(subset=['batch_no']).copy()
+            # --- DATE FILTER INTEGRATION ---
+            st.markdown("### 📅 Dashboard Filter")
+            filter_col1, _ = st.columns([1, 2])
+            with filter_col1:
+                period = st.selectbox("Select Time Period (Based on Receipt Date):", 
+                                      ["All Time", "Current Month", "Last 30 Days", "Current Year", "Last Year"])
                 
-                time_df['chem_analysis_hrs'] = time_df['chem_analysis_hrs'].fillna(0)
-                time_df['micro_analysis_hrs'] = time_df['micro_analysis_hrs'].fillna(0)
-                
-                time_df_melted = time_df.melt(id_vars="batch_no", value_vars=['chem_analysis_hrs', 'micro_analysis_hrs'], var_name="Analysis Type", value_name="Hours")
-                fig_time = px.bar(time_df_melted, x="batch_no", y="Hours", color="Analysis Type", template="plotly_white", color_discrete_sequence=["#4318FF", "#05CD99"])
-                fig_time.update_layout(xaxis_title="Batch Number", yaxis_title="Time Required (Hours)")
-                st.plotly_chart(fig_time, use_container_width=True)
-            
-            st.markdown("---")
-            col_chart1, col_chart2 = st.columns(2)
-            
-            with col_chart1:
-                st.markdown("### 📈 Client Workload Distribution")
-                if 'client_name' in df.columns:
-                    client_counts = df['client_name'].value_counts().reset_index()
-                    client_counts.columns = ['Client', 'Count']
-                    fig_client = px.bar(client_counts, x='Client', y='Count', template="plotly_white", color_discrete_sequence=['#4318FF'])
-                    st.plotly_chart(fig_client, use_container_width=True)
+            today = datetime.today()
+            if period == "Current Month":
+                filtered_df = df[(df['sample_receipt_date'].dt.month == today.month) & (df['sample_receipt_date'].dt.year == today.year)]
+            elif period == "Last 30 Days":
+                filtered_df = df[df['sample_receipt_date'] >= (today - timedelta(days=30))]
+            elif period == "Current Year":
+                filtered_df = df[df['sample_receipt_date'].dt.year == today.year]
+            elif period == "Last Year":
+                filtered_df = df[df['sample_receipt_date'].dt.year == today.year - 1]
+            else:
+                filtered_df = df.copy()
+            # -------------------------------
 
-            with col_chart2:
-                st.markdown("### 🟢 Real-time Status Overview")
-                if 'status' in df.columns:
-                    status_counts = df['status'].value_counts().reset_index()
-                    status_counts.columns = ['Status', 'Count']
-                    fig_status = px.pie(status_counts, names='Status', values='Count', template="plotly_white", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                    st.plotly_chart(fig_status, use_container_width=True)
+            if not filtered_df.empty:
+                total_batches = len(filtered_df)
+                released = len(filtered_df[filtered_df['status'] == 'Released']) if 'status' in filtered_df.columns else 0
+                
+                open_delays = 0
+                if 'delay_reason' in filtered_df.columns:
+                    open_delays = len(filtered_df[filtered_df["delay_reason"].notna() & (filtered_df["delay_reason"].astype(str).str.strip() != "Within Time") & (filtered_df["delay_reason"].astype(str).str.strip() != "nan")])
+                
+                filtered_df['Total TAT'] = (filtered_df['coa_completion_date'] - filtered_df['sample_receipt_date']).dt.days
+                avg_tat = filtered_df['Total TAT'].mean() if not filtered_df['Total TAT'].dropna().empty else 0
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.markdown(f'<div class="trendy-card"><div class="metric-label">Total Batches</div><div class="metric-value">{total_batches}</div></div>', unsafe_allow_html=True)
+                c2.markdown(f'<div class="trendy-card" style="border-left-color: #05CD99;"><div class="metric-label">Released</div><div class="metric-value" style="color: #05CD99;">{released}</div></div>', unsafe_allow_html=True)
+                c3.markdown(f'<div class="trendy-card" style="border-left-color: #F59E0B;"><div class="metric-label">Global Avg TAT (Days)</div><div class="metric-value" style="color: #F59E0B;">{avg_tat:.1f}</div></div>', unsafe_allow_html=True)
+                c4.markdown(f'<div class="trendy-card" style="border-left-color: #EF4444;"><div class="metric-label">Open Delays</div><div class="metric-value" style="color: #EF4444;">{open_delays}</div></div>', unsafe_allow_html=True)
+
+                st.markdown("---")
+                
+                if 'chem_analysis_hrs' in filtered_df.columns and 'micro_analysis_hrs' in filtered_df.columns:
+                    st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
+                    time_df = filtered_df[['batch_no', 'chem_analysis_hrs', 'micro_analysis_hrs']].dropna(subset=['batch_no']).copy()
+                    
+                    time_df['chem_analysis_hrs'] = time_df['chem_analysis_hrs'].fillna(0)
+                    time_df['micro_analysis_hrs'] = time_df['micro_analysis_hrs'].fillna(0)
+                    
+                    time_df_melted = time_df.melt(id_vars="batch_no", value_vars=['chem_analysis_hrs', 'micro_analysis_hrs'], var_name="Analysis Type", value_name="Hours")
+                    fig_time = px.bar(time_df_melted, x="batch_no", y="Hours", color="Analysis Type", template="plotly_white", color_discrete_sequence=["#4318FF", "#05CD99"])
+                    fig_time.update_layout(xaxis_title="Batch Number", yaxis_title="Time Required (Hours)")
+                    st.plotly_chart(fig_time, use_container_width=True)
+                
+                st.markdown("---")
+                col_chart1, col_chart2 = st.columns(2)
+                
+                with col_chart1:
+                    st.markdown("### 📈 Client Workload Distribution")
+                    if 'client_name' in filtered_df.columns:
+                        client_counts = filtered_df['client_name'].value_counts().reset_index()
+                        client_counts.columns = ['Client', 'Count']
+                        fig_client = px.bar(client_counts, x='Client', y='Count', template="plotly_white", color_discrete_sequence=['#4318FF'])
+                        st.plotly_chart(fig_client, use_container_width=True)
+
+                with col_chart2:
+                    st.markdown("### 🟢 Real-time Status Overview")
+                    if 'status' in filtered_df.columns:
+                        status_counts = filtered_df['status'].value_counts().reset_index()
+                        status_counts.columns = ['Status', 'Count']
+                        fig_status = px.pie(status_counts, names='Status', values='Count', template="plotly_white", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                        st.plotly_chart(fig_status, use_container_width=True)
+            else:
+                st.info("No batch data available for the selected time period.")
         else:
             st.info("Awaiting batch data to populate analytics.")
 
@@ -499,7 +516,6 @@ else:
                     db_df = upload_df[list(rename_map.keys())].rename(columns=rename_map)
                     db_df.dropna(subset=['batch_no'], inplace=True)
                     
-                    # Clean uploaded strings before DB commit
                     for col in db_df.select_dtypes(include=['object', 'string']).columns:
                         db_df[col] = db_df[col].apply(lambda x: str(x).strip() if pd.notna(x) and isinstance(x, str) else x)
                     
