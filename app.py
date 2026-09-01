@@ -12,6 +12,100 @@ st.set_page_config(page_title="Encore QC Analytics", page_icon="🧬", layout="w
 
 ENCORE_LOGO_URL = "https://encorehealthcare.in/wp-content/uploads/2023/12/encore-healthcare_transparent-1536x618.png"
 
+PRODUCT_CLIENT_MAP = {
+    "Becosules Capsules": "Pfizer Limited",
+    "Becosules Z Capsules": "Pfizer Limited",
+    "Imodium Capsules": "Kenvue Limited",
+    "Stugeron Plus Tablets": "Dr. Reddy's Laboratories Limited",
+    "Stugeron Forte Tablets": "Dr. Reddy's Laboratories Limited",
+    "Ultracet Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Ultracet Semi_Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Topamac 25mg Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Topamac 50mg Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Topamac 100mg tablets": "Johnson & Johnson Pvt. Ltd",
+    "Sibelium 5mg tablets": "Johnson & Johnson Pvt. Ltd",
+    "Sibelium 10mg Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Risperdal 1mg Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Risperdal 2mg Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Risperdal 3mg tablets": "Johnson & Johnson Pvt. Ltd",
+    "Risperdal 4mg Tablets": "Johnson & Johnson Pvt. Ltd",
+    "Concor_10mg_Tablets": "Merck Specialities Private Limited",
+    "Concor_5mg_Tablets": "Merck Specialities Private Limited",
+    "Concor Cor_2.5mg_Tablets": "Merck Specialities Private Limited",
+    "Concor Cor_1.25 mg_Tablets": "Merck Specialities Private Limited",
+    "Concor Plus Tablets": "Merck Specialities Private Limited",
+    "Calpol_500+_Tablet": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Calpol_650+_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Calpol_500+_Tablets (Bulk)": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Zyloric_ 100mg_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Zyloric_ 300mg_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Lanoxin_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Cobadex CZS_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Zovirax_200mg_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Zovirax_400mg_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Zovirax_800mg_Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Zimig 250mg Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "CCM Tablets": "GSK (Glaxo Smithkline Pharma Limited)",
+    "Neurobion Forte Tablets": "P&G (Procter and Gamble) Health Limited",
+    "Livogen Captab": "P&G (Procter and Gamble) Health Limited",
+    "Livogen Z Captab": "P&G (Procter and Gamble) Health Limited",
+    "Vicks Action_500mg_Tablets": "P&G (Procter and Gamble) Health Limited",
+    "Alaspan AM Tablets": "Bayer Pharmaceuticals Private Limited",
+    "Alaspan Tablets": "Bayer Pharmaceuticals Private Limited",
+    "Polaramine Tablets": "Bayer Pharmaceuticals Private Limited",
+    "Pangran Granules": "Haleon",
+    "Crocin 650mg Tablets": "Haleon",
+    "Crocin Pain Relief Tablets": "Haleon",
+    "Crocin Advance Tablets": "Haleon",
+    "Endoxy Capsules": "Encore Healthcare Private Limited",
+    "Encipro 500mg Tablets": "Encore Healthcare Private Limited",
+    "TAB-SUV Tablets": "Encore Healthcare Private Limited",
+    "Xielol 50mg Tablets": "Encore Healthcare Private Limited",
+    "Metroncore 250mg Tablets": "Encore Healthcare Private Limited",
+    "Metroncore 500mg Tablets": "Encore Healthcare Private Limited",
+    "Metroncore 400mg Tablets": "Encore Healthcare Private Limited",
+    "Melomcore 5mg Tablets": "Encore Healthcare Private Limited",
+    "Restigard-O Capsules": "Encore Healthcare Private Limited",
+    "AD-CND Tablets": "Encore Healthcare Private Limited",
+    "Ontadex Capsules": "Encore Healthcare Private Limited",
+    "Xyctic 200mg Tablets": "Encore Healthcare Private Limited",
+    "Encovolt Tablets": "Encore Healthcare Private Limited",
+    "Melomcore 15mg Tablets": "Encore Healthcare Private Limited",
+    "Parencore_1000mg_Tablets": "Encore Healthcare Private Limited",
+    "UT-Flox_Tablets": "Encore Healthcare Private Limited",
+    "Jimlig_100mg_Capsules": "Encore Healthcare Private Limited",
+    "Jimlig_200mg_Capsules": "Encore Healthcare Private Limited",
+    "Fe-sency_Tablets": "Encore Healthcare Private Limited",
+    "Tofalig_5mg_Tablets": "Encore Healthcare Private Limited",
+    "Atonl_ 50mg_TABLETS": "Encore Healthcare Private Limited",
+    "Atonl_ 100mg_TABLETS": "Encore Healthcare Private Limited",
+    "Jimlig_65mg SB_Capsules": "Encore Healthcare Private Limited",
+    "Jimlig_130mg SB_Capsules": "Encore Healthcare Private Limited",
+    "Encinim_Tablets": "Encore Healthcare Private Limited",
+    "Entravo_10mg _Tablets": "Encore Healthcare Private Limited",
+    "Entravo_15mg _Tablets": "Encore Healthcare Private Limited",
+    "Entravo_20mg_Tablets": "Encore Healthcare Private Limited",
+    "Flemico _Tablets": "Encore Healthcare Private Limited",
+    "Gelabex_50mg_Tablets": "Encore Healthcare Private Limited",
+    "Gelabex_100mg_Tablets": "Encore Healthcare Private Limited",
+    "Gelabex_200mg_Tablets": "Encore Healthcare Private Limited",
+    "Mebencore_100mg_Tablets": "Encore Healthcare Private Limited",
+    "Encotac 150mg Tablets": "Encore Healthcare Private Limited",
+    "Lirplan_25mg_Tablets": "Encore Healthcare Private Limited",
+    "Lirplan_50mg_Tablets": "Encore Healthcare Private Limited",
+    "Letapin_16mg_Tablets": "Encore Healthcare Private Limited",
+    "Letapin_24mg_Tablets": "Encore Healthcare Private Limited",
+    "Scino_2.5mg_Tablets": "Encore Healthcare Private Limited",
+    "Scino_5mg_Tablets": "Encore Healthcare Private Limited",
+    "Repsola_Tablets": "Encore Healthcare Private Limited",
+    "Tab-SUV_250mg_Tablets": "Encore Healthcare Private Limited",
+    "Enabolic_10mg_Tablets": "Encore Healthcare Private Limited",
+    "Zower_Tablets": "Encore Healthcare Private Limited",
+    "Ontadex BP_50mg_Capsules": "Encore Healthcare Private Limited",
+    "Xyctic 400mg Tablets": "Encore Healthcare Private Limited",
+    "Encofer_Tablets": "Encore Healthcare Private Limited"
+}
+
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -50,7 +144,6 @@ def hash_password(password):
 
 def init_db():
     with conn.session as s:
-        # Rebuilt schema to match the Master Excel Tracker precisely
         s.execute(text("""
             CREATE TABLE IF NOT EXISTS qc_master_tracker (
                 id SERIAL PRIMARY KEY, product_name TEXT, client_name TEXT, batch_no TEXT UNIQUE, ar_no TEXT,
@@ -164,8 +257,15 @@ else:
         
         st.markdown("#### 📦 General Batch Information")
         g1, g2, g3, g4 = st.columns(4)
-        product_name = g1.text_input("Product Name *")
-        client_name = g2.text_input("Client Name *")
+        
+        # Selectbox for Product Name to ensure accurate mapping
+        product_options = [""] + list(PRODUCT_CLIENT_MAP.keys())
+        product_name = g1.selectbox("Product Name *", options=product_options)
+        
+        # Auto-fill Client Name based on the selection above
+        auto_client = PRODUCT_CLIENT_MAP.get(product_name, "")
+        client_name = g2.text_input("Client Name *", value=auto_client)
+        
         batch_no = g3.text_input("Batch No. *")
         ar_no = g4.text_input("AR. No.")
         
