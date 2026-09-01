@@ -258,13 +258,17 @@ else:
         st.markdown("#### 📦 General Batch Information")
         g1, g2, g3, g4 = st.columns(4)
         
-        # Selectbox for Product Name to ensure accurate mapping
-        product_options = [""] + list(PRODUCT_CLIENT_MAP.keys())
-        product_name = g1.selectbox("Product Name *", options=product_options)
+        # New Product Handling Logic
+        product_options = [""] + list(PRODUCT_CLIENT_MAP.keys()) + ["➕ Add New Product..."]
+        selected_product = g1.selectbox("Product Name *", options=product_options)
         
-        # Auto-fill Client Name based on the selection above
-        auto_client = PRODUCT_CLIENT_MAP.get(product_name, "")
-        client_name = g2.text_input("Client Name *", value=auto_client)
+        if selected_product == "➕ Add New Product...":
+            product_name = g1.text_input("Enter New Product Name *")
+            client_name = g2.text_input("Enter Client Name *")
+        else:
+            product_name = selected_product
+            auto_client = PRODUCT_CLIENT_MAP.get(product_name, "")
+            client_name = g2.text_input("Client Name *", value=auto_client)
         
         batch_no = g3.text_input("Batch No. *")
         ar_no = g4.text_input("AR. No.")
