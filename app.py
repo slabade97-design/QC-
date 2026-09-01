@@ -132,7 +132,6 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def init_db():
-    # Block 1: Main Tracker Table
     with conn.session as s:
         s.execute(text("""
             CREATE TABLE IF NOT EXISTS qc_master_tracker (
@@ -148,7 +147,6 @@ def init_db():
         """))
         s.commit()
         
-    # Block 2: Safe Column Alteration (Adds missing cols if table existed previously)
     try:
         with conn.session as s:
             s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN IF NOT EXISTS chem_analysis_hrs REAL"))
@@ -158,7 +156,6 @@ def init_db():
     except Exception:
         pass
 
-    # Block 3: User & Log Tables
     with conn.session as s:
         s.execute(text("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL)"))
         s.execute(text("CREATE TABLE IF NOT EXISTS user_logs (id SERIAL PRIMARY KEY, username TEXT, login_time TIMESTAMP, logout_time TIMESTAMP, usage_minutes REAL)"))
@@ -212,6 +209,11 @@ else:
     st.sidebar.button("🚪 Logout", on_click=do_logout, use_container_width=True)
     
     df = conn.query("SELECT * FROM qc_master_tracker", ttl=0)
+    
+    missing_cols = ['chem_analysis_hrs', 'micro_analysis_hrs', 'total_analysis_hrs']
+    for col in missing_cols:
+        if col not in df.columns:
+            df[col] = 0.0
 
     st.markdown(f'<div class="top-header"><img src="{ENCORE_LOGO_URL}"><div><h1>Encore QC Master Hub</h1><p>Finished Product Analysis Tracking</p></div></div>', unsafe_allow_html=True)
 
@@ -224,7 +226,7 @@ else:
             df['coa_completion_date'] = pd.to_datetime(df['coa_completion_date'], errors='coerce')
             
             total_batches = len(df)
-            released = len(df[df['status'] == 'Released'])
+            released = len(df[df['status'] == 'Released']) if 'status' in df.columns else 0
             
             open_delays = 0
             if 'delay_reason' in df.columns:
@@ -241,12 +243,10 @@ else:
 
             st.markdown("---")
             
-            # Sub-graph: Time Analysis per Batch (Safety check added for new cols)
             if 'chem_analysis_hrs' in df.columns and 'micro_analysis_hrs' in df.columns:
                 st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
                 time_df = df[['batch_no', 'chem_analysis_hrs', 'micro_analysis_hrs']].dropna(subset=['batch_no']).copy()
                 
-                # Fill NAs to 0 to prevent plotting errors
                 time_df['chem_analysis_hrs'] = time_df['chem_analysis_hrs'].fillna(0)
                 time_df['micro_analysis_hrs'] = time_df['micro_analysis_hrs'].fillna(0)
                 
@@ -283,7 +283,6 @@ else:
         st.markdown("#### 📦 General Batch Information")
         g1, g2, g3, g4 = st.columns(4)
         
-        # New Product Handling Logic
         product_options = [""] + list(PRODUCT_CLIENT_MAP.keys()) + ["➕ Add New Product..."]
         selected_product = g1.selectbox("Product Name *", options=product_options)
         
@@ -307,7 +306,6 @@ else:
         g9, g10, _, _ = st.columns(4)
         sample_receipt_date = g9.date_input("Sample Receipt Date", value=date.today(), format="DD/MM/YYYY")
         
-        # Auto Target Release Date (+6 Days)
         auto_target_date = sample_receipt_date + timedelta(days=6) if sample_receipt_date else None
         target_release_date = g10.date_input("Target Release Date (Auto +6 Days)", value=auto_target_date, format="DD/MM/YYYY", disabled=True)
 
@@ -335,25 +333,34 @@ else:
 
         with c_right:
             st.markdown("#### 🧫 Microbiological Testing")
-            micro_analyst = st.text_input("Micro Analyst")
-            micro_qty = st.text_input("Micro Analysis Qty")
+            micro_not_applicable = st.checkbox("Microbiological Testing Not Applicable", value=False)
             
-            m_s1, m_s2 = st.columns(2)
-            micro_start_d = m_s1.date_input("Micro Start Date", value=None, format="DD/MM/YYYY")
-            micro_start_t = m_s2.time_input("Micro Start Time", value=None)
-            
-            m_e1, m_e2 = st.columns(2)
-            micro_end_d = m_e1.date_input("Micro Completion Date", value=None, format="DD/MM/YYYY")
-            micro_end_t = m_e2.time_input("Micro Completion Time", value=None)
+            if micro_not_applicable:
+                micro_analyst = "Not Applicable"
+                micro_qty = "Not Applicable"
+                micro_start = None
+                micro_end = None
+                micro_hours = 0.0
+                st.info("Microbiological testing is marked as Not Applicable for this batch.")
+            else:
+                micro_analyst = st.text_input("Micro Analyst")
+                micro_qty = st.text_input("Micro Analysis Qty")
+                
+                m_s1, m_s2 = st.columns(2)
+                micro_start_d = m_s1.date_input("Micro Start Date", value=None, format="DD/MM/YYYY")
+                micro_start_t = m_s2.time_input("Micro Start Time", value=None)
+                
+                m_e1, m_e2 = st.columns(2)
+                micro_end_d = m_e1.date_input("Micro Completion Date", value=None, format="DD/MM/YYYY")
+                micro_end_t = m_e2.time_input("Micro Completion Time", value=None)
 
-            micro_start = datetime.combine(micro_start_d, micro_start_t) if micro_start_d and micro_start_t else None
-            micro_end = datetime.combine(micro_end_d, micro_end_t) if micro_end_d and micro_end_t else None
-            micro_hours = (micro_end - micro_start).total_seconds() / 3600 if micro_start and micro_end else 0
-            
-            if micro_hours > 0:
-                st.success(f"⏱️ Calculated Micro Time: {micro_hours:.2f} Hrs")
+                micro_start = datetime.combine(micro_start_d, micro_start_t) if micro_start_d and micro_start_t else None
+                micro_end = datetime.combine(micro_end_d, micro_end_t) if micro_end_d and micro_end_t else None
+                micro_hours = (micro_end - micro_start).total_seconds() / 3600 if micro_start and micro_end else 0
+                
+                if micro_hours > 0:
+                    st.success(f"⏱️ Calculated Micro Time: {micro_hours:.2f} Hrs")
 
-        # Total Calculation
         total_analysis_hrs = chem_hours + micro_hours
         if total_analysis_hrs > 0:
             st.info(f"**Total Combined Analysis Time:** {total_analysis_hrs:.2f} Hrs")
@@ -366,8 +373,13 @@ else:
             chem_destroyed_by = st.text_input("Chem Destroyed By")
         with d_right:
             st.markdown("#### 🗑️ Microbial Destruction")
-            micro_destruct_qty = st.text_input("Micro Destruct Qty")
-            micro_destroyed_by = st.text_input("Micro Destroyed By")
+            if micro_not_applicable:
+                micro_destruct_qty = "Not Applicable"
+                micro_destroyed_by = "Not Applicable"
+                st.info("Not Applicable")
+            else:
+                micro_destruct_qty = st.text_input("Micro Destruct Qty")
+                micro_destroyed_by = st.text_input("Micro Destroyed By")
 
         st.markdown("---")
         st.markdown("#### 📄 Final Sign-Off & Status")
@@ -375,17 +387,18 @@ else:
         coa_completion_date = f1.date_input("COA Completion Date", value=None, format="DD/MM/YYYY")
         remarks = f2.text_input("Remarks")
 
-        # Dynamic Status Logic
+        # Dynamic Status Logic accommodating Micro Not Applicable
+        is_micro_done = True if micro_not_applicable else bool(micro_end)
+        
         if coa_completion_date: derived_status = "Released"
-        elif chem_end and micro_end: derived_status = "COA Awaited"
-        elif chem_end or micro_end: derived_status = "Analysis Partially Completed"
-        elif chem_start or micro_start: derived_status = "Under Analysis"
+        elif chem_end and is_micro_done: derived_status = "COA Awaited"
+        elif chem_end or bool(micro_end): derived_status = "Analysis Partially Completed"
+        elif chem_start or bool(micro_start): derived_status = "Under Analysis"
         elif sample_receipt_date: derived_status = "Sample Received"
         else: derived_status = "Pending"
         
         st.info(f"**Auto-Calculated Workflow Status:** {derived_status}")
 
-        # Dynamic Delay Reason + Custom Input
         delay_reason = "Within Time"
         max_end_date = max(d for d in [chem_end, micro_end] if d) if chem_end or micro_end else None
         
@@ -433,7 +446,6 @@ else:
     with tabs[2]:
         st.markdown("### 📋 Universal Centralized Database")
         
-        # Excel Upload Section to ingest historical data rapidly
         with st.expander("📂 Bulk Upload from Master Excel Template"):
             st.info("Upload your existing 'QC_Finished_Product_Analysis_Tracking_Template' to merge data directly into the system.")
             uploaded_file = st.file_uploader("Select Excel File", type=["xlsx", "xlsm"])
@@ -441,12 +453,8 @@ else:
             if uploaded_file and st.button("Merge Data to Database", type="primary"):
                 try:
                     upload_df = pd.read_excel(uploaded_file, sheet_name=0)
-                    
-                    # The first row contains secondary sub-headers in your excel file. We skip index 0.
                     upload_df = upload_df.iloc[1:].copy()
                     
-                    # Explicit mapping from Excel Column Position -> Database Schema
-                    # This prevents 'Unnamed: 12' pandas errors
                     rename_map = {
                         upload_df.columns[1]: 'product_name',
                         upload_df.columns[2]: 'client_name',
@@ -480,24 +488,20 @@ else:
                     }
                     
                     db_df = upload_df[list(rename_map.keys())].rename(columns=rename_map)
-                    db_df.dropna(subset=['batch_no'], inplace=True) # Drop entirely blank rows
+                    db_df.dropna(subset=['batch_no'], inplace=True)
                     
-                    # Clean and format dates safely for SQL insertion
                     for col in ['sample_receipt_date', 'target_release_date', 'chem_start', 'chem_end', 'micro_start', 'micro_end', 'coa_completion_date']:
                         db_df[col] = pd.to_datetime(db_df[col], errors='coerce')
                     
-                    # Clean and format numeric time cols
                     for col in ['chem_analysis_hrs', 'micro_analysis_hrs', 'total_analysis_hrs']:
                         db_df[col] = pd.to_numeric(db_df[col], errors='coerce').fillna(0)
                         
-                    # Commit parsed records to database automatically
                     db_df.to_sql("qc_master_tracker", con=conn.engine, if_exists="append", index=False)
                     st.success("Historical Excel Data successfully synchronized with the Vault!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error parsing uploaded file. Please ensure it perfectly matches the standard template. Details: {e}")
 
-        # Live Editable Data Grid
         if not df.empty:
             edited_df = st.data_editor(
                 df, use_container_width=True, hide_index=True,
