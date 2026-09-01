@@ -111,24 +111,13 @@ st.markdown(f"""
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
     .stApp {{ background: #F7F9FC; }}
-    
-    .top-header {{
-        background: linear-gradient(135deg, #0B1C3E 0%, #1A365D 100%);
-        padding: 20px 30px; border-radius: 15px; color: white; margin-bottom: 30px;
-        display: flex; align-items: center; box-shadow: 0 10px 25px rgba(11, 28, 62, 0.15);
-    }}
+    .top-header {{ background: linear-gradient(135deg, #0B1C3E 0%, #1A365D 100%); padding: 20px 30px; border-radius: 15px; color: white; margin-bottom: 30px; display: flex; align-items: center; box-shadow: 0 10px 25px rgba(11, 28, 62, 0.15); }}
     .top-header img {{ height: 50px; margin-right: 20px; }} 
     .top-header h1 {{ margin: 0; font-size: 2.2rem; font-weight: 800; }}
     .top-header p {{ margin: 5px 0 0 0; color: #94A3B8; font-weight: 500; }}
-
-    .trendy-card {{ 
-        background: #FFFFFF; border-radius: 16px; padding: 24px 20px; text-align: left; 
-        box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05); border-left: 6px solid #4318FF; 
-        position: relative; overflow: hidden;
-    }}
+    .trendy-card {{ background: #FFFFFF; border-radius: 16px; padding: 24px 20px; text-align: left; box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05); border-left: 6px solid #4318FF; position: relative; overflow: hidden; }}
     .metric-value {{ font-size: 2.2rem; font-weight: 800; color: #1E293B; margin: 8px 0 0 0; }}
     .metric-label {{ color: #64748B; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }}
-    
     .stTabs [data-baseweb="tab-list"] {{ border-bottom: 2px solid #E2E8F0; }}
     .stTabs [aria-selected="true"] {{ border-bottom: 3px solid #4318FF; background-color: #FFFFFF; }}
     </style>
@@ -151,11 +140,16 @@ def init_db():
                 sample_receipt_date DATE, target_release_date DATE,
                 chem_analyst TEXT, chem_qty TEXT, chem_start TIMESTAMP, chem_end TIMESTAMP, chem_analysis_hrs REAL,
                 micro_analyst TEXT, micro_qty TEXT, micro_start TIMESTAMP, micro_end TIMESTAMP, micro_analysis_hrs REAL,
-                chem_destruct_qty TEXT, chem_destroyed_by TEXT, 
+                total_analysis_hrs REAL, chem_destruct_qty TEXT, chem_destroyed_by TEXT, 
                 micro_destruct_qty TEXT, micro_destroyed_by TEXT,
                 coa_completion_date DATE, status TEXT, delay_reason TEXT, remarks TEXT
             )
         """))
+        
+        # Safely add total_analysis_hrs if it doesn't exist from a previous schema version
+        try: s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN total_analysis_hrs REAL"))
+        except: pass
+        
         s.execute(text("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL)"))
         s.execute(text("CREATE TABLE IF NOT EXISTS user_logs (id SERIAL PRIMARY KEY, username TEXT, login_time TIMESTAMP, logout_time TIMESTAMP, usage_minutes REAL)"))
         
@@ -233,6 +227,17 @@ else:
             c4.markdown(f'<div class="trendy-card" style="border-left-color: #EF4444;"><div class="metric-label">Open Delays</div><div class="metric-value" style="color: #EF4444;">{open_delays}</div></div>', unsafe_allow_html=True)
 
             st.markdown("---")
+            
+            # Sub-graph: Time Analysis per Batch
+            st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
+            time_df = df[['batch_no', 'chem_analysis_hrs', 'micro_analysis_hrs']].dropna(subset=['batch_no']).copy()
+            # Melt dataframe to plot stacked bars
+            time_df_melted = time_df.melt(id_vars="batch_no", value_vars=['chem_analysis_hrs', 'micro_analysis_hrs'], var_name="Analysis Type", value_name="Hours")
+            fig_time = px.bar(time_df_melted, x="batch_no", y="Hours", color="Analysis Type", template="plotly_white", color_discrete_sequence=["#4318FF", "#05CD99"])
+            fig_time.update_layout(xaxis_title="Batch Number", yaxis_title="Time Required (Hours)")
+            st.plotly_chart(fig_time, use_container_width=True)
+            
+            st.markdown("---")
             col_chart1, col_chart2 = st.columns(2)
             
             with col_chart1:
@@ -306,7 +311,7 @@ else:
             chem_hours = (chem_end - chem_start).total_seconds() / 3600 if chem_start and chem_end else 0
             
             if chem_hours > 0:
-                st.success(f"⏱️ Calculated Time: {chem_hours:.2f} Hrs")
+                st.success(f"⏱️ Calculated Chem Time: {chem_hours:.2f} Hrs")
 
         with c_right:
             st.markdown("#### 🧫 Microbiological Testing")
@@ -326,7 +331,12 @@ else:
             micro_hours = (micro_end - micro_start).total_seconds() / 3600 if micro_start and micro_end else 0
             
             if micro_hours > 0:
-                st.success(f"⏱️ Calculated Time: {micro_hours:.2f} Hrs")
+                st.success(f"⏱️ Calculated Micro Time: {micro_hours:.2f} Hrs")
+
+        # Total Calculation
+        total_analysis_hrs = chem_hours + micro_hours
+        if total_analysis_hrs > 0:
+            st.info(f"**Total Combined Analysis Time:** {total_analysis_hrs:.2f} Hrs")
 
         st.markdown("---")
         d_left, d_right = st.columns(2)
@@ -379,17 +389,17 @@ else:
                             INSERT INTO qc_master_tracker (
                                 product_name, client_name, batch_no, ar_no, batch_size, mfg_date, exp_date, sample_qty,
                                 sample_receipt_date, target_release_date, chem_analyst, chem_qty, chem_start, chem_end, chem_analysis_hrs,
-                                micro_analyst, micro_qty, micro_start, micro_end, micro_analysis_hrs, chem_destruct_qty, chem_destroyed_by,
+                                micro_analyst, micro_qty, micro_start, micro_end, micro_analysis_hrs, total_analysis_hrs, chem_destruct_qty, chem_destroyed_by,
                                 micro_destruct_qty, micro_destroyed_by, coa_completion_date, status, delay_reason, remarks
                             ) VALUES (
-                                :pn, :cn, :bn, :ar, :bs, :md, :ed, :sq, :srd, :trd, :ca, :cq, :cs, :ce, :c_hrs, :ma, :mq, :ms, :me, :m_hrs,
+                                :pn, :cn, :bn, :ar, :bs, :md, :ed, :sq, :srd, :trd, :ca, :cq, :cs, :ce, :c_hrs, :ma, :mq, :ms, :me, :m_hrs, :t_hrs,
                                 :cdq, :cdb, :mdq, :mdb, :coa, :st, :dr, :rm
                             )
                         """), {
                             "pn": product_name, "cn": client_name, "bn": batch_no, "ar": ar_no, "bs": batch_size,
                             "md": mfg_date, "ed": exp_date, "sq": sample_qty, "srd": sample_receipt_date, "trd": target_release_date,
                             "ca": chem_analyst, "cq": chem_qty, "cs": chem_start, "ce": chem_end, "c_hrs": chem_hours,
-                            "ma": micro_analyst, "mq": micro_qty, "ms": micro_start, "me": micro_end, "m_hrs": micro_hours,
+                            "ma": micro_analyst, "mq": micro_qty, "ms": micro_start, "me": micro_end, "m_hrs": micro_hours, "t_hrs": total_analysis_hrs,
                             "cdq": chem_destruct_qty, "cdb": chem_destroyed_by, "mdq": micro_destruct_qty, "mdb": micro_destroyed_by,
                             "coa": coa_completion_date, "st": derived_status, "dr": delay_reason, "rm": remarks
                         })
@@ -399,9 +409,75 @@ else:
                 except Exception as e:
                     st.error(f"Error: Batch Number already exists or format is invalid. ({e})")
 
-    # --- TAB 3: LIVE GRID ---
+    # --- TAB 3: LIVE GRID & EXCEL UPLOAD ---
     with tabs[2]:
         st.markdown("### 📋 Universal Centralized Database")
+        
+        # Excel Upload Section to ingest historical data rapidly
+        with st.expander("📂 Bulk Upload from Master Excel Template"):
+            st.info("Upload your existing 'QC_Finished_Product_Analysis_Tracking_Template' to merge data directly into the system.")
+            uploaded_file = st.file_uploader("Select Excel File", type=["xlsx", "xlsm"])
+            
+            if uploaded_file and st.button("Merge Data to Database", type="primary"):
+                try:
+                    upload_df = pd.read_excel(uploaded_file, sheet_name=0)
+                    
+                    # The first row contains secondary sub-headers in your excel file. We skip index 0.
+                    upload_df = upload_df.iloc[1:].copy()
+                    
+                    # Explicit mapping from Excel Column Position -> Database Schema
+                    # This prevents 'Unnamed: 12' pandas errors
+                    rename_map = {
+                        upload_df.columns[1]: 'product_name',
+                        upload_df.columns[2]: 'client_name',
+                        upload_df.columns[3]: 'batch_no',
+                        upload_df.columns[4]: 'ar_no',
+                        upload_df.columns[5]: 'batch_size',
+                        upload_df.columns[6]: 'mfg_date',
+                        upload_df.columns[7]: 'exp_date',
+                        upload_df.columns[8]: 'sample_qty',
+                        upload_df.columns[9]: 'sample_receipt_date',
+                        upload_df.columns[10]: 'target_release_date',
+                        upload_df.columns[11]: 'chem_analyst',
+                        upload_df.columns[12]: 'chem_qty',
+                        upload_df.columns[13]: 'chem_start',
+                        upload_df.columns[14]: 'chem_end',
+                        upload_df.columns[15]: 'chem_analysis_hrs',
+                        upload_df.columns[16]: 'micro_analyst',
+                        upload_df.columns[17]: 'micro_qty',
+                        upload_df.columns[18]: 'micro_start',
+                        upload_df.columns[19]: 'micro_end',
+                        upload_df.columns[20]: 'micro_analysis_hrs',
+                        upload_df.columns[21]: 'total_analysis_hrs',
+                        upload_df.columns[22]: 'coa_completion_date',
+                        upload_df.columns[24]: 'status',
+                        upload_df.columns[25]: 'chem_destruct_qty',
+                        upload_df.columns[26]: 'chem_destroyed_by',
+                        upload_df.columns[27]: 'micro_destruct_qty',
+                        upload_df.columns[28]: 'micro_destroyed_by',
+                        upload_df.columns[29]: 'delay_reason',
+                        upload_df.columns[30]: 'remarks',
+                    }
+                    
+                    db_df = upload_df[list(rename_map.keys())].rename(columns=rename_map)
+                    db_df.dropna(subset=['batch_no'], inplace=True) # Drop entirely blank rows
+                    
+                    # Clean and format dates safely for SQL insertion
+                    for col in ['sample_receipt_date', 'target_release_date', 'chem_start', 'chem_end', 'micro_start', 'micro_end', 'coa_completion_date']:
+                        db_df[col] = pd.to_datetime(db_df[col], errors='coerce')
+                    
+                    # Clean and format numeric time cols
+                    for col in ['chem_analysis_hrs', 'micro_analysis_hrs', 'total_analysis_hrs']:
+                        db_df[col] = pd.to_numeric(db_df[col], errors='coerce').fillna(0)
+                        
+                    # Commit parsed records to database automatically
+                    db_df.to_sql("qc_master_tracker", con=conn.engine, if_exists="append", index=False)
+                    st.success("Historical Excel Data successfully synchronized with the Vault!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error parsing uploaded file. Please ensure it perfectly matches the standard template. Details: {e}")
+
+        # Live Editable Data Grid
         if not df.empty:
             edited_df = st.data_editor(
                 df, use_container_width=True, hide_index=True,
@@ -410,8 +486,11 @@ else:
                     "target_release_date": st.column_config.DateColumn("Target Release Date", format="DD/MM/YYYY"),
                     "chem_start": st.column_config.DatetimeColumn("Chem Start", format="DD/MM/YYYY HH:mm"),
                     "chem_end": st.column_config.DatetimeColumn("Chem End", format="DD/MM/YYYY HH:mm"),
+                    "chem_analysis_hrs": st.column_config.NumberColumn("Chem Hrs", format="%.2f"),
                     "micro_start": st.column_config.DatetimeColumn("Micro Start", format="DD/MM/YYYY HH:mm"),
                     "micro_end": st.column_config.DatetimeColumn("Micro End", format="DD/MM/YYYY HH:mm"),
+                    "micro_analysis_hrs": st.column_config.NumberColumn("Micro Hrs", format="%.2f"),
+                    "total_analysis_hrs": st.column_config.NumberColumn("Total Hrs", format="%.2f"),
                     "coa_completion_date": st.column_config.DateColumn("COA Date", format="DD/MM/YYYY")
                 }
             )
