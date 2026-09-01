@@ -246,7 +246,6 @@ else:
                 month_options = ["All Months", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
                 selected_month = st.selectbox("Select Month:", month_options)
                 
-            # Apply Year/Month Filter Logic
             filtered_df = df.copy()
             
             if selected_year != "All Time":
@@ -299,6 +298,45 @@ else:
                 c8.markdown(f'<div class="trendy-card" style="border-left-color: #94A3B8;"><div class="metric-label">Pending / Unassigned</div><div class="metric-value" style="color: #94A3B8;">{pending_count}</div></div>', unsafe_allow_html=True)
 
                 st.markdown("---")
+
+                # --- INTERACTIVE DRILL-DOWN LOGIC ---
+                st.markdown("### 🔍 Interactive Drill-Down")
+                drill_category = st.radio(
+                    "Select a KPI category to instantly view the underlying batches:",
+                    ["Hide Data Table", "Total Batches", "Released", "Under Analysis", "COA Awaited", "Sample Received", "Open Delays", "Pending / Unassigned"],
+                    horizontal=True
+                )
+
+                if drill_category != "Hide Data Table":
+                    drill_df = filtered_df.copy()
+                    
+                    if drill_category == "Released":
+                        drill_df = drill_df[drill_df['status'].astype(str).str.lower().str.contains('release', na=False)]
+                    elif drill_category == "Under Analysis":
+                        drill_df = drill_df[drill_df['status'].astype(str).str.lower().str.contains('under', na=False)]
+                    elif drill_category == "COA Awaited":
+                        drill_df = drill_df[drill_df['status'].astype(str).str.lower().str.contains('coa await', na=False)]
+                    elif drill_category == "Sample Received":
+                        drill_df = drill_df[drill_df['status'].astype(str).str.lower().str.contains('sample receiv', na=False)]
+                    elif drill_category == "Open Delays":
+                        delay_mask = drill_df["delay_reason"].astype(str).str.lower()
+                        drill_df = drill_df[(delay_mask != "within time") & (delay_mask != "nan") & (drill_df["delay_reason"].notna())]
+                    elif drill_category == "Pending / Unassigned":
+                        known_mask = drill_df['status'].astype(str).str.lower().str.contains('release|under|coa await|sample receiv', na=False)
+                        drill_df = drill_df[~known_mask]
+                    
+                    # Display the drilled-down table neatly
+                    st.dataframe(
+                        drill_df[['batch_no', 'product_name', 'client_name', 'status', 'sample_receipt_date', 'target_release_date', 'delay_reason']],
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "sample_receipt_date": st.column_config.DateColumn("Receipt Date", format="DD/MM/YYYY"),
+                            "target_release_date": st.column_config.DateColumn("Target Date", format="DD/MM/YYYY")
+                        }
+                    )
+                st.markdown("---")
+                # ------------------------------------
                 
                 if 'chem_analysis_hrs' in filtered_df.columns and 'micro_analysis_hrs' in filtered_df.columns:
                     st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
