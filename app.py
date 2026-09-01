@@ -132,6 +132,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def init_db():
+    # Block 1: Main Tracker Table
     with conn.session as s:
         s.execute(text("""
             CREATE TABLE IF NOT EXISTS qc_master_tracker (
@@ -145,11 +146,18 @@ def init_db():
                 coa_completion_date DATE, status TEXT, delay_reason TEXT, remarks TEXT
             )
         """))
+        s.commit()
         
-        # Safely add total_analysis_hrs if it doesn't exist from a previous schema version
-        try: s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN total_analysis_hrs REAL"))
-        except: pass
-        
+    # Block 2: Safe Column Alteration (Independent Transaction to prevent aborts)
+    try:
+        with conn.session as s:
+            s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN IF NOT EXISTS total_analysis_hrs REAL"))
+            s.commit()
+    except Exception:
+        pass
+
+    # Block 3: User & Log Tables
+    with conn.session as s:
         s.execute(text("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL)"))
         s.execute(text("CREATE TABLE IF NOT EXISTS user_logs (id SERIAL PRIMARY KEY, username TEXT, login_time TIMESTAMP, logout_time TIMESTAMP, usage_minutes REAL)"))
         
