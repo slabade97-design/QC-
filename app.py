@@ -1,5 +1,5 @@
 import hashlib
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -277,7 +277,10 @@ else:
 
         g9, g10, _, _ = st.columns(4)
         sample_receipt_date = g9.date_input("Sample Receipt Date", value=date.today(), format="DD/MM/YYYY")
-        target_release_date = g10.date_input("Target Release Date", value=None, format="DD/MM/YYYY")
+        
+        # Auto Target Release Date (+6 Days)
+        auto_target_date = sample_receipt_date + timedelta(days=6) if sample_receipt_date else None
+        target_release_date = g10.date_input("Target Release Date (Auto +6 Days)", value=auto_target_date, format="DD/MM/YYYY", disabled=True)
 
         st.markdown("---")
         c_left, c_right = st.columns(2)
