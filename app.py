@@ -210,6 +210,14 @@ else:
     
     df = conn.query("SELECT * FROM qc_master_tracker", ttl=0)
     
+    # ----------------------------------------------------------------
+    # BULLETPROOF DATA CLEANUP & SAFETY NET 
+    # Strips trailing spaces from Excel to guarantee exact text matching
+    # ----------------------------------------------------------------
+    if not df.empty:
+        for col in df.select_dtypes(include=['object', 'string']).columns:
+            df[col] = df[col].apply(lambda x: str(x).strip() if pd.notna(x) and isinstance(x, str) else x)
+            
     missing_cols = ['chem_analysis_hrs', 'micro_analysis_hrs', 'total_analysis_hrs']
     for col in missing_cols:
         if col not in df.columns:
@@ -226,11 +234,13 @@ else:
             df['coa_completion_date'] = pd.to_datetime(df['coa_completion_date'], errors='coerce')
             
             total_batches = len(df)
+            # Excel spaces are now cleanly matched to 'Released'
             released = len(df[df['status'] == 'Released']) if 'status' in df.columns else 0
             
             open_delays = 0
             if 'delay_reason' in df.columns:
-                open_delays = len(df[df["delay_reason"].notna() & (df["delay_reason"] != "Within Time")])
+                # Also stripping delays just in case to avoid 'Within Time ' issues
+                open_delays = len(df[df["delay_reason"].notna() & (df["delay_reason"].astype(str).str.strip() != "Within Time") & (df["delay_reason"].astype(str).str.strip() != "nan")])
             
             df['Total TAT'] = (df['coa_completion_date'] - df['sample_receipt_date']).dt.days
             avg_tat = df['Total TAT'].mean() if not df['Total TAT'].dropna().empty else 0
@@ -387,7 +397,6 @@ else:
         coa_completion_date = f1.date_input("COA Completion Date", value=None, format="DD/MM/YYYY")
         remarks = f2.text_input("Remarks")
 
-        # Dynamic Status Logic accommodating Micro Not Applicable
         is_micro_done = True if micro_not_applicable else bool(micro_end)
         
         if coa_completion_date: derived_status = "Released"
@@ -489,6 +498,10 @@ else:
                     
                     db_df = upload_df[list(rename_map.keys())].rename(columns=rename_map)
                     db_df.dropna(subset=['batch_no'], inplace=True)
+                    
+                    # Clean uploaded strings before DB commit
+                    for col in db_df.select_dtypes(include=['object', 'string']).columns:
+                        db_df[col] = db_df[col].apply(lambda x: str(x).strip() if pd.notna(x) and isinstance(x, str) else x)
                     
                     for col in ['sample_receipt_date', 'target_release_date', 'chem_start', 'chem_end', 'micro_start', 'micro_end', 'coa_completion_date']:
                         db_df[col] = pd.to_datetime(db_df[col], errors='coerce')
