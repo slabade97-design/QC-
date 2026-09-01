@@ -1,5 +1,4 @@
 import hashlib
-import calendar
 from datetime import date, datetime, timedelta
 import pandas as pd
 import plotly.express as px
@@ -9,7 +8,7 @@ from sqlalchemy import text
 # -------------------------------------------------------------
 # 1. Page Config & Styling
 # -------------------------------------------------------------
-st.set_page_config(page_title="Encore QC Analytics", page_icon="🧬", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Encore QC Analytics", page_icon="🧬", layout="wide", initial_sidebar_state="collapsed")
 
 ENCORE_LOGO_URL = "https://encorehealthcare.in/wp-content/uploads/2023/12/encore-healthcare_transparent-1536x618.png"
 
@@ -112,15 +111,23 @@ st.markdown(f"""
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     html, body, [class*="css"] {{ font-family: 'Plus Jakarta Sans', sans-serif; }}
     .stApp {{ background: #F7F9FC; }}
-    .top-header {{ background: linear-gradient(135deg, #0B1C3E 0%, #1A365D 100%); padding: 20px 30px; border-radius: 15px; color: white; margin-bottom: 30px; display: flex; align-items: center; box-shadow: 0 10px 25px rgba(11, 28, 62, 0.15); }}
+    
+    /* Header & Cards */
+    .top-header {{ background: linear-gradient(135deg, #0B1C3E 0%, #1A365D 100%); padding: 20px 30px; border-radius: 15px; color: white; margin-bottom: 20px; display: flex; align-items: center; box-shadow: 0 10px 25px rgba(11, 28, 62, 0.15); }}
     .top-header img {{ height: 50px; margin-right: 20px; }} 
     .top-header h1 {{ margin: 0; font-size: 2.2rem; font-weight: 800; }}
     .top-header p {{ margin: 5px 0 0 0; color: #94A3B8; font-weight: 500; }}
     .trendy-card {{ background: #FFFFFF; border-radius: 16px; padding: 24px 20px; text-align: left; box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05); border-left: 6px solid #4318FF; position: relative; overflow: hidden; height: 100%; }}
     .metric-value {{ font-size: 2.2rem; font-weight: 800; color: #1E293B; margin: 8px 0 0 0; }}
     .metric-label {{ color: #64748B; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }}
+    
+    /* Tabs & Buttons */
     .stTabs [data-baseweb="tab-list"] {{ border-bottom: 2px solid #E2E8F0; }}
     .stTabs [aria-selected="true"] {{ border-bottom: 3px solid #4318FF; background-color: #FFFFFF; }}
+    button[kind="primary"] {{ background: linear-gradient(135deg, #0B1C3E 0%, #1A365D 100%) !important; border: none !important; color: white !important; font-weight: bold !important; }}
+    
+    /* User Profile Box */
+    .user-profile-box {{ background: #FFFFFF; border-radius: 12px; padding: 15px; text-align: right; box-shadow: 0px 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; height: 100%; display: flex; flex-direction: column; justify-content: center; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -161,8 +168,9 @@ def init_db():
         s.execute(text("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT NOT NULL)"))
         s.execute(text("CREATE TABLE IF NOT EXISTS user_logs (id SERIAL PRIMARY KEY, username TEXT, login_time TIMESTAMP, logout_time TIMESTAMP, usage_minutes REAL)"))
         
+        # Admin Default Setup
         if not s.execute(text("SELECT * FROM users WHERE username='admin'")).fetchone():
-            s.execute(text("INSERT INTO users (username, password, role) VALUES (:u, :p, :r)"), {"u": "admin", "p": hash_password("admin@123"), "r": "admin"})
+            s.execute(text("INSERT INTO users (username, password, role) VALUES (:u, :p, :r)"), {"u": "admin", "p": hash_password("Hrishi@2021"), "r": "admin"})
         s.commit()
 
 init_db()
@@ -185,30 +193,30 @@ def do_logout():
 if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
-        st.markdown(f'<div style="text-align:center;margin:30px 0;"><img src="{ENCORE_LOGO_URL}" style="height:70px;"><h2 style="color:#0B1C3E;font-weight:800;">Encore Healthcare</h2></div>', unsafe_allow_html=True)
-        st.markdown('<div class="trendy-card" style="border-top:5px solid #4318FF;border-left:none;">', unsafe_allow_html=True)
-        u_in = st.text_input("Username")
-        p_in = st.text_input("Password", type="password")
-        if st.button("Secure Login", type="primary", use_container_width=True):
-            user = conn.query("SELECT id, role, password FROM users WHERE username = :u", params={"u": u_in})
-            if not user.empty and user.iloc[0]['password'] == hash_password(p_in):
-                st.session_state.update({"logged_in": True, "username": u_in, "role": user.iloc[0]['role'], "login_time": datetime.now()})
-                with conn.session as s:
-                    st.session_state.log_id = s.execute(text("INSERT INTO user_logs (username, login_time) VALUES (:u, :lt) RETURNING id"), {"u": u_in, "lt": st.session_state.login_time}).fetchone()[0]
-                    s.commit()
-                st.rerun()
-            else:
-                st.error("Invalid Credentials")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="text-align:center;margin:40px 0 20px 0;"><img src="{ENCORE_LOGO_URL}" style="height:110px;"></div>', unsafe_allow_html=True)
+        
+        # Wrapped in form so hitting 'Enter' submits it automatically
+        with st.form("login_form"):
+            st.markdown("<h3 style='text-align:center; color:#0B1C3E; margin-bottom:20px;'>System Login</h3>", unsafe_allow_html=True)
+            u_in = st.text_input("Username")
+            p_in = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Secure Login", type="primary", use_container_width=True)
+            
+            if submitted:
+                user = conn.query("SELECT id, role, password FROM users WHERE username = :u", params={"u": u_in})
+                if not user.empty and user.iloc[0]['password'] == hash_password(p_in):
+                    st.session_state.update({"logged_in": True, "username": u_in, "role": user.iloc[0]['role'], "login_time": datetime.now()})
+                    with conn.session as s:
+                        st.session_state.log_id = s.execute(text("INSERT INTO user_logs (username, login_time) VALUES (:u, :lt) RETURNING id"), {"u": u_in, "lt": st.session_state.login_time}).fetchone()[0]
+                        s.commit()
+                    st.rerun()
+                else:
+                    st.error("Invalid Credentials")
 
 # -------------------------------------------------------------
 # 4. Main Application Hub
 # -------------------------------------------------------------
 else:
-    st.sidebar.image(ENCORE_LOGO_URL, use_container_width=True)
-    st.sidebar.markdown(f"<br>👤 **User:** {st.session_state.username}<br>🛡️ **Role:** {st.session_state.role.upper()}<br>", unsafe_allow_html=True)
-    st.sidebar.button("🚪 Logout", on_click=do_logout, use_container_width=True)
-    
     df = conn.query("SELECT * FROM qc_master_tracker", ttl=0)
     
     if not df.empty:
@@ -220,7 +228,13 @@ else:
         if col not in df.columns:
             df[col] = 0.0
 
-    st.markdown(f'<div class="top-header"><img src="{ENCORE_LOGO_URL}"><div><h1>Encore QC Master Hub</h1><p>Finished Product Analysis Tracking</p></div></div>', unsafe_allow_html=True)
+    # Top Header & User Profile Bar
+    head_col, user_col = st.columns([4.5, 1.5])
+    with head_col:
+        st.markdown(f'<div class="top-header"><img src="{ENCORE_LOGO_URL}"><div><h1>Encore QC Master Hub</h1><p>Finished Product Analysis Tracking</p></div></div>', unsafe_allow_html=True)
+    with user_col:
+        st.markdown(f"<div class='user-profile-box'><b>👤 {st.session_state.username}</b><br><span style='color: #64748B; font-size: 0.85em; font-weight: bold;'>🛡️ {st.session_state.role.upper()}</span></div>", unsafe_allow_html=True)
+        st.button("🚪 Logout System", on_click=do_logout, use_container_width=True)
 
     tabs = st.tabs(["📊 Analytics Dashboard", "📝 Log New Batch", "📋 Master Database"] + (["🛡️ Admin Panel"] if st.session_state.role == "admin" else []))
 
@@ -271,10 +285,16 @@ else:
                 else:
                     released = under_test = coa_awaited = sample_received = 0
                     
+                # STRICT OPEN DELAYS LOGIC: Must be delayed AND NOT released
                 open_delays = 0
-                if 'delay_reason' in filtered_df.columns:
-                    delay_series = filtered_df["delay_reason"].astype(str).str.lower()
-                    open_delays = len(delay_series[(delay_series != "within time") & (delay_series != "nan")])
+                if 'delay_reason' in filtered_df.columns and 'status' in filtered_df.columns:
+                    delay_mask = filtered_df["delay_reason"].astype(str).str.lower()
+                    status_mask = filtered_df["status"].astype(str).str.lower()
+                    open_delays = len(filtered_df[
+                        (delay_mask != "within time") & 
+                        (delay_mask != "nan") & 
+                        (~status_mask.str.contains('release', na=False))
+                    ])
                 
                 filtered_df['Total TAT'] = (filtered_df['coa_completion_date'] - filtered_df['sample_receipt_date']).dt.days
                 avg_tat = filtered_df['Total TAT'].mean() if not filtered_df['Total TAT'].dropna().empty else 0
@@ -320,12 +340,12 @@ else:
                         drill_df = drill_df[drill_df['status'].astype(str).str.lower().str.contains('sample receiv', na=False)]
                     elif drill_category == "Open Delays":
                         delay_mask = drill_df["delay_reason"].astype(str).str.lower()
-                        drill_df = drill_df[(delay_mask != "within time") & (delay_mask != "nan") & (drill_df["delay_reason"].notna())]
+                        status_mask = drill_df["status"].astype(str).str.lower()
+                        drill_df = drill_df[(delay_mask != "within time") & (delay_mask != "nan") & (~status_mask.str.contains('release', na=False))]
                     elif drill_category == "Pending / Unassigned":
                         known_mask = drill_df['status'].astype(str).str.lower().str.contains('release|under|coa await|sample receiv', na=False)
                         drill_df = drill_df[~known_mask]
                     
-                    # Display the drilled-down table neatly
                     st.dataframe(
                         drill_df[['batch_no', 'product_name', 'client_name', 'status', 'sample_receipt_date', 'target_release_date', 'delay_reason']],
                         use_container_width=True,
@@ -336,7 +356,6 @@ else:
                         }
                     )
                 st.markdown("---")
-                # ------------------------------------
                 
                 if 'chem_analysis_hrs' in filtered_df.columns and 'micro_analysis_hrs' in filtered_df.columns:
                     st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
