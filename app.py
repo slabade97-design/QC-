@@ -229,25 +229,23 @@ else:
             df['sample_receipt_date'] = pd.to_datetime(df['sample_receipt_date'], errors='coerce')
             df['coa_completion_date'] = pd.to_datetime(df['coa_completion_date'], errors='coerce')
             
-            # --- DATE FILTER INTEGRATION ---
+            # --- DYNAMIC MONTH-YEAR FILTER INTEGRATION ---
             st.markdown("### 📅 Dashboard Filter")
+            
+            # Extract formatted "Month Year" directly from the dataset
+            df['MonthYear'] = df['sample_receipt_date'].dt.to_period('M')
+            available_periods = ["All Time"] + [m.strftime('%B %Y') for m in sorted(df['MonthYear'].dropna().unique(), reverse=True)]
+            
             filter_col1, _ = st.columns([1, 2])
             with filter_col1:
-                period = st.selectbox("Select Time Period (Based on Receipt Date):", 
-                                      ["All Time", "Current Month", "Last 30 Days", "Current Year", "Last Year"])
+                selected_period = st.selectbox("Select Target Period:", available_periods)
                 
-            today = datetime.today()
-            if period == "Current Month":
-                filtered_df = df[(df['sample_receipt_date'].dt.month == today.month) & (df['sample_receipt_date'].dt.year == today.year)]
-            elif period == "Last 30 Days":
-                filtered_df = df[df['sample_receipt_date'] >= (today - timedelta(days=30))]
-            elif period == "Current Year":
-                filtered_df = df[df['sample_receipt_date'].dt.year == today.year]
-            elif period == "Last Year":
-                filtered_df = df[df['sample_receipt_date'].dt.year == today.year - 1]
-            else:
+            if selected_period == "All Time":
                 filtered_df = df.copy()
-            # -------------------------------
+            else:
+                selected_m_y = pd.Period(datetime.strptime(selected_period, '%B %Y'), freq='M')
+                filtered_df = df[df['MonthYear'] == selected_m_y]
+            # ---------------------------------------------
 
             if not filtered_df.empty:
                 total_batches = len(filtered_df)
