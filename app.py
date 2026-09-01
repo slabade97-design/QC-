@@ -149,8 +149,8 @@ def init_db():
                 id SERIAL PRIMARY KEY, product_name TEXT, client_name TEXT, batch_no TEXT UNIQUE, ar_no TEXT,
                 batch_size TEXT, mfg_date TEXT, exp_date TEXT, sample_qty TEXT,
                 sample_receipt_date DATE, target_release_date DATE,
-                chem_analyst TEXT, chem_qty TEXT, chem_start DATE, chem_end DATE,
-                micro_analyst TEXT, micro_qty TEXT, micro_start DATE, micro_end DATE,
+                chem_analyst TEXT, chem_qty TEXT, chem_start TIMESTAMP, chem_end TIMESTAMP, chem_analysis_hrs REAL,
+                micro_analyst TEXT, micro_qty TEXT, micro_start TIMESTAMP, micro_end TIMESTAMP, micro_analysis_hrs REAL,
                 chem_destruct_qty TEXT, chem_destroyed_by TEXT, 
                 micro_destruct_qty TEXT, micro_destroyed_by TEXT,
                 coa_completion_date DATE, status TEXT, delay_reason TEXT, remarks TEXT
@@ -292,15 +292,41 @@ else:
             st.markdown("#### 🧪 Chemical Testing")
             chem_analyst = st.text_input("Chem Analyst")
             chem_qty = st.text_input("Chem Analysis Qty")
-            chem_start = st.date_input("Chem Start Date", value=None, format="DD/MM/YYYY")
-            chem_end = st.date_input("Chem Completion Date", value=None, format="DD/MM/YYYY")
-        
+            
+            c_s1, c_s2 = st.columns(2)
+            chem_start_d = c_s1.date_input("Chem Start Date", value=None, format="DD/MM/YYYY")
+            chem_start_t = c_s2.time_input("Chem Start Time", value=None)
+            
+            c_e1, c_e2 = st.columns(2)
+            chem_end_d = c_e1.date_input("Chem Completion Date", value=None, format="DD/MM/YYYY")
+            chem_end_t = c_e2.time_input("Chem Completion Time", value=None)
+            
+            chem_start = datetime.combine(chem_start_d, chem_start_t) if chem_start_d and chem_start_t else None
+            chem_end = datetime.combine(chem_end_d, chem_end_t) if chem_end_d and chem_end_t else None
+            chem_hours = (chem_end - chem_start).total_seconds() / 3600 if chem_start and chem_end else 0
+            
+            if chem_hours > 0:
+                st.success(f"⏱️ Calculated Time: {chem_hours:.2f} Hrs")
+
         with c_right:
             st.markdown("#### 🧫 Microbiological Testing")
             micro_analyst = st.text_input("Micro Analyst")
             micro_qty = st.text_input("Micro Analysis Qty")
-            micro_start = st.date_input("Micro Start Date", value=None, format="DD/MM/YYYY")
-            micro_end = st.date_input("Micro Completion Date", value=None, format="DD/MM/YYYY")
+            
+            m_s1, m_s2 = st.columns(2)
+            micro_start_d = m_s1.date_input("Micro Start Date", value=None, format="DD/MM/YYYY")
+            micro_start_t = m_s2.time_input("Micro Start Time", value=None)
+            
+            m_e1, m_e2 = st.columns(2)
+            micro_end_d = m_e1.date_input("Micro Completion Date", value=None, format="DD/MM/YYYY")
+            micro_end_t = m_e2.time_input("Micro Completion Time", value=None)
+
+            micro_start = datetime.combine(micro_start_d, micro_start_t) if micro_start_d and micro_start_t else None
+            micro_end = datetime.combine(micro_end_d, micro_end_t) if micro_end_d and micro_end_t else None
+            micro_hours = (micro_end - micro_start).total_seconds() / 3600 if micro_start and micro_end else 0
+            
+            if micro_hours > 0:
+                st.success(f"⏱️ Calculated Time: {micro_hours:.2f} Hrs")
 
         st.markdown("---")
         d_left, d_right = st.columns(2)
@@ -329,14 +355,19 @@ else:
         
         st.info(f"**Auto-Calculated Workflow Status:** {derived_status}")
 
-        # Dynamic Delay Logic (Checking maximum date of analysis vs receipt)
+        # Dynamic Delay Reason + Custom Input
         delay_reason = "Within Time"
         max_end_date = max(d for d in [chem_end, micro_end] if d) if chem_end or micro_end else None
         
         if sample_receipt_date and max_end_date:
-            if (max_end_date - sample_receipt_date).days > 6:
-                delay_reason = st.selectbox("Delay Reason (Required as TAT > 6 days) *", 
-                    ["Instrument Maintenance", "OOS Investigation", "Manpower Crunch", "Pious Laboratory Await", "Other"])
+            if (max_end_date.date() - sample_receipt_date).days > 6:
+                delay_options = ["Instrument Maintenance", "OOS Investigation", "Manpower Crunch", "Pious Laboratory Await", "Other", "➕ Add New Reason..."]
+                selected_delay = st.selectbox("Delay Reason (Required as TAT > 6 days) *", delay_options)
+                
+                if selected_delay == "➕ Add New Reason...":
+                    delay_reason = st.text_input("Enter Custom Delay Reason *")
+                else:
+                    delay_reason = selected_delay
 
         if st.button("💾 Save Batch Record", type="primary", use_container_width=True):
             if not product_name or not batch_no or not client_name:
@@ -347,18 +378,18 @@ else:
                         s.execute(text("""
                             INSERT INTO qc_master_tracker (
                                 product_name, client_name, batch_no, ar_no, batch_size, mfg_date, exp_date, sample_qty,
-                                sample_receipt_date, target_release_date, chem_analyst, chem_qty, chem_start, chem_end,
-                                micro_analyst, micro_qty, micro_start, micro_end, chem_destruct_qty, chem_destroyed_by,
+                                sample_receipt_date, target_release_date, chem_analyst, chem_qty, chem_start, chem_end, chem_analysis_hrs,
+                                micro_analyst, micro_qty, micro_start, micro_end, micro_analysis_hrs, chem_destruct_qty, chem_destroyed_by,
                                 micro_destruct_qty, micro_destroyed_by, coa_completion_date, status, delay_reason, remarks
                             ) VALUES (
-                                :pn, :cn, :bn, :ar, :bs, :md, :ed, :sq, :srd, :trd, :ca, :cq, :cs, :ce, :ma, :mq, :ms, :me,
+                                :pn, :cn, :bn, :ar, :bs, :md, :ed, :sq, :srd, :trd, :ca, :cq, :cs, :ce, :c_hrs, :ma, :mq, :ms, :me, :m_hrs,
                                 :cdq, :cdb, :mdq, :mdb, :coa, :st, :dr, :rm
                             )
                         """), {
                             "pn": product_name, "cn": client_name, "bn": batch_no, "ar": ar_no, "bs": batch_size,
                             "md": mfg_date, "ed": exp_date, "sq": sample_qty, "srd": sample_receipt_date, "trd": target_release_date,
-                            "ca": chem_analyst, "cq": chem_qty, "cs": chem_start, "ce": chem_end,
-                            "ma": micro_analyst, "mq": micro_qty, "ms": micro_start, "me": micro_end,
+                            "ca": chem_analyst, "cq": chem_qty, "cs": chem_start, "ce": chem_end, "c_hrs": chem_hours,
+                            "ma": micro_analyst, "mq": micro_qty, "ms": micro_start, "me": micro_end, "m_hrs": micro_hours,
                             "cdq": chem_destruct_qty, "cdb": chem_destroyed_by, "mdq": micro_destruct_qty, "mdb": micro_destroyed_by,
                             "coa": coa_completion_date, "st": derived_status, "dr": delay_reason, "rm": remarks
                         })
@@ -377,10 +408,10 @@ else:
                 column_config={
                     "sample_receipt_date": st.column_config.DateColumn("Sample Receipt Date", format="DD/MM/YYYY"),
                     "target_release_date": st.column_config.DateColumn("Target Release Date", format="DD/MM/YYYY"),
-                    "chem_start": st.column_config.DateColumn("Chem Start Date", format="DD/MM/YYYY"),
-                    "chem_end": st.column_config.DateColumn("Chem End Date", format="DD/MM/YYYY"),
-                    "micro_start": st.column_config.DateColumn("Micro Start Date", format="DD/MM/YYYY"),
-                    "micro_end": st.column_config.DateColumn("Micro End Date", format="DD/MM/YYYY"),
+                    "chem_start": st.column_config.DatetimeColumn("Chem Start", format="DD/MM/YYYY HH:mm"),
+                    "chem_end": st.column_config.DatetimeColumn("Chem End", format="DD/MM/YYYY HH:mm"),
+                    "micro_start": st.column_config.DatetimeColumn("Micro Start", format="DD/MM/YYYY HH:mm"),
+                    "micro_end": st.column_config.DatetimeColumn("Micro End", format="DD/MM/YYYY HH:mm"),
                     "coa_completion_date": st.column_config.DateColumn("COA Date", format="DD/MM/YYYY")
                 }
             )
