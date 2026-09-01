@@ -148,9 +148,11 @@ def init_db():
         """))
         s.commit()
         
-    # Block 2: Safe Column Alteration (Independent Transaction to prevent aborts)
+    # Block 2: Safe Column Alteration (Adds missing cols if table existed previously)
     try:
         with conn.session as s:
+            s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN IF NOT EXISTS chem_analysis_hrs REAL"))
+            s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN IF NOT EXISTS micro_analysis_hrs REAL"))
             s.execute(text("ALTER TABLE qc_master_tracker ADD COLUMN IF NOT EXISTS total_analysis_hrs REAL"))
             s.commit()
     except Exception:
@@ -223,7 +225,10 @@ else:
             
             total_batches = len(df)
             released = len(df[df['status'] == 'Released'])
-            open_delays = len(df[df["delay_reason"].notna() & (df["delay_reason"] != "Within Time")])
+            
+            open_delays = 0
+            if 'delay_reason' in df.columns:
+                open_delays = len(df[df["delay_reason"].notna() & (df["delay_reason"] != "Within Time")])
             
             df['Total TAT'] = (df['coa_completion_date'] - df['sample_receipt_date']).dt.days
             avg_tat = df['Total TAT'].mean() if not df['Total TAT'].dropna().empty else 0
@@ -236,31 +241,38 @@ else:
 
             st.markdown("---")
             
-            # Sub-graph: Time Analysis per Batch
-            st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
-            time_df = df[['batch_no', 'chem_analysis_hrs', 'micro_analysis_hrs']].dropna(subset=['batch_no']).copy()
-            # Melt dataframe to plot stacked bars
-            time_df_melted = time_df.melt(id_vars="batch_no", value_vars=['chem_analysis_hrs', 'micro_analysis_hrs'], var_name="Analysis Type", value_name="Hours")
-            fig_time = px.bar(time_df_melted, x="batch_no", y="Hours", color="Analysis Type", template="plotly_white", color_discrete_sequence=["#4318FF", "#05CD99"])
-            fig_time.update_layout(xaxis_title="Batch Number", yaxis_title="Time Required (Hours)")
-            st.plotly_chart(fig_time, use_container_width=True)
+            # Sub-graph: Time Analysis per Batch (Safety check added for new cols)
+            if 'chem_analysis_hrs' in df.columns and 'micro_analysis_hrs' in df.columns:
+                st.markdown("### ⏱️ Analysis Time per Batch (Chemical vs Micro)")
+                time_df = df[['batch_no', 'chem_analysis_hrs', 'micro_analysis_hrs']].dropna(subset=['batch_no']).copy()
+                
+                # Fill NAs to 0 to prevent plotting errors
+                time_df['chem_analysis_hrs'] = time_df['chem_analysis_hrs'].fillna(0)
+                time_df['micro_analysis_hrs'] = time_df['micro_analysis_hrs'].fillna(0)
+                
+                time_df_melted = time_df.melt(id_vars="batch_no", value_vars=['chem_analysis_hrs', 'micro_analysis_hrs'], var_name="Analysis Type", value_name="Hours")
+                fig_time = px.bar(time_df_melted, x="batch_no", y="Hours", color="Analysis Type", template="plotly_white", color_discrete_sequence=["#4318FF", "#05CD99"])
+                fig_time.update_layout(xaxis_title="Batch Number", yaxis_title="Time Required (Hours)")
+                st.plotly_chart(fig_time, use_container_width=True)
             
             st.markdown("---")
             col_chart1, col_chart2 = st.columns(2)
             
             with col_chart1:
                 st.markdown("### 📈 Client Workload Distribution")
-                client_counts = df['client_name'].value_counts().reset_index()
-                client_counts.columns = ['Client', 'Count']
-                fig_client = px.bar(client_counts, x='Client', y='Count', template="plotly_white", color_discrete_sequence=['#4318FF'])
-                st.plotly_chart(fig_client, use_container_width=True)
+                if 'client_name' in df.columns:
+                    client_counts = df['client_name'].value_counts().reset_index()
+                    client_counts.columns = ['Client', 'Count']
+                    fig_client = px.bar(client_counts, x='Client', y='Count', template="plotly_white", color_discrete_sequence=['#4318FF'])
+                    st.plotly_chart(fig_client, use_container_width=True)
 
             with col_chart2:
                 st.markdown("### 🟢 Real-time Status Overview")
-                status_counts = df['status'].value_counts().reset_index()
-                status_counts.columns = ['Status', 'Count']
-                fig_status = px.pie(status_counts, names='Status', values='Count', template="plotly_white", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
-                st.plotly_chart(fig_status, use_container_width=True)
+                if 'status' in df.columns:
+                    status_counts = df['status'].value_counts().reset_index()
+                    status_counts.columns = ['Status', 'Count']
+                    fig_status = px.pie(status_counts, names='Status', values='Count', template="plotly_white", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    st.plotly_chart(fig_status, use_container_width=True)
         else:
             st.info("Awaiting batch data to populate analytics.")
 
